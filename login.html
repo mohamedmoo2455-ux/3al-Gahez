@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ع الجاهز - تسجيل الدخول</title>
+    <!-- استدعاء مكتبة Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- إعدادات الألوان المخصصة من البوستر -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandOrange: '#f97316', 
+                        brandBlue: '#1e3a8a',   
+                        brandPurple: '#9333ea', 
+                        brandLight: '#f8fafc'   
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- خط كوفي عربي مناسب للتطبيقات -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-brandLight min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md border-t-4 border-brandOrange">
+        <!-- اللوجو والترحيب -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-brandBlue mb-2">ع الـ<span class="text-brandOrange">جاهز</span></h1>
+            <p class="text-gray-500 font-semibold">أسرع طريقة لطلب أكلك في المعهد</p>
+        </div>
+
+        <!-- نموذج تسجيل الدخول -->
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label for="username" class="block text-sm font-bold text-brandBlue mb-2">رقم الهاتف أو اسم المستخدم</label>
+                <input type="text" id="username" required 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brandPurple focus:border-transparent transition-all"
+                    placeholder="أدخل رقمك هنا...">
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-bold text-brandBlue mb-2">كلمة المرور</label>
+                <input type="password" id="password" required 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brandPurple focus:border-transparent transition-all"
+                    placeholder="••••••••">
+            </div>
+
+            <button type="submit" 
+                class="w-full bg-brandOrange hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow-md transition-all transform hover:scale-[1.02]">
+                تسجيل الدخول
+            </button>
+        </form>
+
+        <!-- رسالة الخطأ (مخفية افتراضياً) -->
+        <div id="errorMessage" class="hidden mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm font-semibold text-center">
+            بيانات الدخول غير صحيحة!
+        </div>
+    </div>
+
+    <!-- كود الجافاسكريبت المبدئي لتوجيه المستخدمين (مؤقت بدون داتابيز) -->
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // عشان الصفحة متعملش ريفريش
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorMessage = document.getElementById('errorMessage');
+
+            // إخفاء رسالة الخطأ مع كل محاولة جديدة
+            errorMessage.classList.add('hidden');
+
+            // 1. فحص حساب الأدمن
+            if (username === 'maria' && password === '01226654756') {
+                window.location.href = 'admin-dashboard.html';
+            } 
+            // 2. فحص حساب الطالب
+            else if (username === 'student' && password === '123456') {
+                window.location.href = 'student-app.html'; 
+            } 
+            // 3. فحص حساب المطعم
+            else if (username === 'rest1' && password === '123456') {
+                // بنحفظ رقم وهمي للمطعم في المتصفح عشان نستخدمه جوه الداشبورد بعدين
+                localStorage.setItem('restaurant_id', '1');
+                window.location.href = 'restaurant-dashboard.html';
+            }
+            // لو البيانات غلط
+            else {
+                errorMessage.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

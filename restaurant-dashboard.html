@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ع الجاهز - لوحة تحكم المطعم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandOrange: '#f97316',
+                        brandBlue: '#1e3a8a',
+                        brandPurple: '#9333ea',
+                        brandLight: '#f8fafc',
+                        statusNew: '#ef4444',     /* أحمر للطلبات الجديدة */
+                        statusPrep: '#f59e0b',    /* برتقالي للتجهيز */
+                        statusReady: '#10b981',   /* أخضر للجاهز */
+                        statusDone: '#6b7280'     /* رمادي للي اتسلم */
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-brandLight min-h-screen">
+
+    <!-- شريط علوي للداشبورد -->
+    <header class="bg-brandBlue text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-extrabold">لوحة تحكم: <span class="text-brandOrange">كافيتريا المعهد</span></h1>
+            <div class="flex items-center gap-4">
+                <!-- زر فتح/قفل المطعم -->
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                    <span class="mr-3 text-sm font-bold">المطعم مفتوح</span>
+                </label>
+                <button onclick="logout()" class="text-sm bg-white text-brandBlue px-3 py-1 rounded font-bold hover:bg-gray-100">خروج</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-6">
+
+        <!-- إحصائيات سريعة -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-xl shadow-sm border-r-4 border-statusNew">
+                <p class="text-sm text-gray-500 font-bold">طلبات جديدة</p>
+                <p class="text-2xl font-extrabold text-statusNew">3</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-r-4 border-statusPrep">
+                <p class="text-sm text-gray-500 font-bold">جاري التجهيز</p>
+                <p class="text-2xl font-extrabold text-statusPrep">2</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-r-4 border-statusReady">
+                <p class="text-sm text-gray-500 font-bold">جاهز للاستلام</p>
+                <p class="text-2xl font-extrabold text-statusReady">1</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-r-4 border-statusDone">
+                <p class="text-sm text-gray-500 font-bold">تم التسليم اليوم</p>
+                <p class="text-2xl font-extrabold text-statusDone">15</p>
+            </div>
+        </div>
+
+        <!-- قائمة الطلبات -->
+        <h2 class="text-xl font-bold text-brandBlue mb-4">الطلبات الحالية</h2>
+        
+        <div class="grid gap-4 md:grid-cols-2" id="orders-container">
+            
+            <!-- أوردر 1 (جديد) -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-red-200">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <span class="bg-statusNew text-white text-xs px-2 py-1 rounded font-bold">جديد</span>
+                        <h3 class="font-bold text-lg mt-1">طلب #1042</h3>
+                        <p class="text-sm text-gray-600">الطالب: أحمد سيد (01012345678)</p>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-brandOrange font-extrabold text-lg">120 ج.م</p>
+                        <p class="text-xs text-gray-500">دفع كاش</p>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded-lg text-sm mb-4">
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>2x برجر لحم دبل</li>
+                        <li>1x بطاطس محمرة</li>
+                    </ul>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div class="text-sm font-bold bg-brandPurple text-white px-3 py-1 rounded-full">
+                        استلام: 12:30 م
+                    </div>
+                    <select class="border border-gray-300 rounded p-1 text-sm font-bold bg-gray-50 focus:outline-none" onchange="updateStatus(this, '1042')">
+                        <option value="new" selected>التحويل لحالة...</option>
+                        <option value="prep">جاري التجهيز 👨‍🍳</option>
+                        <option value="ready">جاهز للاستلام ✅</option>
+                        <option value="done">تم التسليم 🏁</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- أوردر 2 (جاري التجهيز) -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-yellow-200">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <span class="bg-statusPrep text-white text-xs px-2 py-1 rounded font-bold">جاري التجهيز</span>
+                        <h3 class="font-bold text-lg mt-1">طلب #1041</h3>
+                        <p class="text-sm text-gray-600">الطالب: سارة محمد (01198765432)</p>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-brandOrange font-extrabold text-lg">45 ج.م</p>
+                        <p class="text-xs text-green-600 font-bold">فودافون كاش (مدفوع)</p>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded-lg text-sm mb-4">
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>1x شاورما فراخ سوري</li>
+                    </ul>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div class="text-sm font-bold bg-brandPurple text-white px-3 py-1 rounded-full">
+                        استلام: 12:00 م
+                    </div>
+                    <select class="border border-gray-300 rounded p-1 text-sm font-bold bg-gray-50 focus:outline-none" onchange="updateStatus(this, '1041')">
+                        <option value="prep" selected>التحويل لحالة...</option>
+                        <option value="ready">جاهز للاستلام ✅</option>
+                        <option value="done">تم التسليم 🏁</option>
+                    </select>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        function updateStatus(selectElement, orderId) {
+            const newStatus = selectElement.value;
+            // هنا هيتم إرسال طلب لـ Supabase عشان يحدث حالة الأوردر ده
+            // بمجرد ما تتحدث في الداتابيز، الطالب هيشوفها اتغيرت عنده في الأبلكيشن
+            console.log(`تم تحديث الأوردر ${orderId} إلى الحالة: ${newStatus}`);
+            alert('تم تحديث حالة الطلب بنجاح للطالب!');
+            
+            // في التطبيق الحقيقي، هنعمل تغيير للون الكارت حسب الحالة الجديدة
+        }
+
+        function logout() {
+            localStorage.removeItem('restaurant_id');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

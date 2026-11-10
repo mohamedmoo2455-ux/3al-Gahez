@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ع الجاهز - واجهة الطلب</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandOrange: '#f97316',
+                        brandBlue: '#1e3a8a',
+                        brandPurple: '#9333ea',
+                        brandLight: '#f8fafc',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
+        /* إخفاء شريط التمرير الأفقي للأقسام */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="max-w-md mx-auto bg-white min-h-screen relative shadow-xl">
+
+    <!-- 1. الهيدر (شريط السلة واللوجو) -->
+    <header class="bg-white sticky top-0 z-50 border-b border-gray-100">
+        <div class="flex justify-between items-center px-4 py-3">
+            <!-- زر السلة -->
+            <button onclick="openCheckout()" class="relative bg-orange-50 px-4 py-2 rounded-xl text-brandOrange font-bold flex items-center gap-2 hover:bg-orange-100 transition">
+                <span class="text-sm">السلة</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <!-- بادج عدد العناصر -->
+                <span id="cart-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white shadow-sm hidden">0</span>
+            </button>
+            
+            <!-- اللوجو -->
+            <div class="text-2xl font-extrabold text-brandBlue">ع الـ<span class="text-brandOrange">جاهز</span></div>
+        </div>
+    </header>
+
+    <!-- 2. المطاعم (تصميم الاستوريز) -->
+    <div class="bg-white pt-4 pb-2">
+        <h3 class="px-4 text-sm font-bold text-gray-800 mb-2">اختار المطعم الأقرب ليك:</h3>
+        <div class="flex gap-4 overflow-x-auto px-4 hide-scrollbar">
+            
+            <!-- مطعم 1 (محدد) -->
+            <div class="flex flex-col items-center gap-1 min-w-[75px] cursor-pointer">
+                <div class="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-brandOrange to-brandPurple">
+                    <div class="w-full h-full rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden">
+                        <span class="text-2xl">🏫</span>
+                    </div>
+                </div>
+                <span class="text-xs font-bold text-brandBlue text-center">كافيتريا المعهد</span>
+                <span class="text-[10px] bg-brandOrange text-white px-2 py-0.5 rounded-full font-bold">0 دقيقة</span>
+            </div>
+
+            <!-- مطعم 2 -->
+            <div class="flex flex-col items-center gap-1 min-w-[75px] cursor-pointer opacity-70 hover:opacity-100 transition">
+                <div class="w-16 h-16 rounded-full p-[2px] bg-gray-200">
+                    <div class="w-full h-full rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden">
+                        <span class="text-2xl">🍔</span>
+                    </div>
+                </div>
+                <span class="text-xs font-bold text-gray-600 text-center">برجر ستيشن</span>
+                <span class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">5 دقايق</span>
+            </div>
+
+            <!-- مطعم 3 -->
+            <div class="flex flex-col items-center gap-1 min-w-[75px] cursor-pointer opacity-70 hover:opacity-100 transition">
+                <div class="w-16 h-16 rounded-full p-[2px] bg-gray-200">
+                    <div class="w-full h-full rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden">
+                        <span class="text-2xl">🌯</span>
+                    </div>
+                </div>
+                <span class="text-xs font-bold text-gray-600 text-center">شاورما وصاج</span>
+                <span class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">10 دقايق</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 3. البانر الرئيسي (Hero Section) والبحث -->
+    <div class="bg-brandOrange text-white rounded-b-[2rem] p-6 shadow-md text-center relative z-10">
+        <h2 class="text-2xl font-extrabold mb-1">بدون طوابير.. طلبك جاهز! 🚀</h2>
+        <p class="text-sm text-orange-100 mb-5 font-semibold">اطلب أكلك واحجزه في الوقت الي تحدده</p>
+        
+        <!-- مربع البحث -->
+        <div class="relative max-w-sm mx-auto">
+            <input type="text" placeholder="نفسك في إيه؟..." 
+                class="w-full rounded-2xl py-3.5 px-4 pr-12 text-gray-800 font-bold focus:outline-none focus:ring-2 focus:ring-brandPurple shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="absolute right-4 top-3.5 text-gray-400 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        </div>
+    </div>
+
+    <!-- 4. تصنيفات المنيو (فلاتر) -->
+    <div class="flex gap-3 overflow-x-auto px-4 py-5 hide-scrollbar mt-2">
+        <button class="bg-brandBlue text-white px-6 py-2.5 rounded-xl font-bold whitespace-nowrap shadow-md">الكل</button>
+        <button class="bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold whitespace-nowrap flex items-center gap-1 shadow-sm">عروض 🔥</button>
+        <button class="bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold whitespace-nowrap flex items-center gap-1 shadow-sm">برجر 🍔</button>
+        <button class="bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold whitespace-nowrap flex items-center gap-1 shadow-sm">مشروبات 🥤</button>
+    </div>
+
+    <!-- 5. قائمة الطعام (عناصر كبيرة) -->
+    <main class="px-4 space-y-5 pb-24" id="menu-items">
+        
+        <!-- صنف 1 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+            <!-- صورة الصنف (مؤقتة) -->
+            <div class="h-44 bg-gray-100 relative flex items-center justify-center">
+                <span class="text-6xl">🍔</span>
+                <!-- بادج مميز -->
+                <div class="absolute top-3 right-3 bg-brandPurple text-white text-xs font-bold px-2 py-1 rounded-lg shadow-md">الأكثر مبيعاً</div>
+            </div>
+            
+            <div class="p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h3 class="font-bold text-brandBlue text-lg">برجر دبل بيف تشيز</h3>
+                        <p class="text-sm text-gray-500 mt-1">شريحتين لحم مع جبنة شيدر وصوص مميز</p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center mt-4">
+                    <p class="text-brandOrange font-extrabold text-xl">85 <span class="text-sm">ج.م</span></p>
+                    <button onclick="addToCart(85)" class="bg-brandBlue text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-800 transition shadow-md">
+                        + أضف
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- صنف 2 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+            <div class="h-44 bg-gray-100 relative flex items-center justify-center">
+                <span class="text-6xl">🍟</span>
+            </div>
+            
+            <div class="p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h3 class="font-bold text-brandBlue text-lg">بطاطس محمرة بالجبنة</h3>
+                        <p class="text-sm text-gray-500 mt-1">بطاطس كرسبي مع ميكس جبن سايح</p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center mt-4">
+                    <p class="text-brandOrange font-extrabold text-xl">35 <span class="text-sm">ج.م</span></p>
+                    <button onclick="addToCart(35)" class="bg-brandBlue text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-800 transition shadow-md">
+                        + أضف
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- شاشة إتمام الطلب (تظهر لما ندوس على السلة) -->
+    <div id="checkout-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-[60] hidden flex-col justify-end">
+        <div class="bg-white rounded-t-3xl p-6 h-[85vh] overflow-y-auto w-full max-w-md mx-auto relative animate-[slideUp_0.3s_ease-out]">
+            <!-- زر إغلاق -->
+            <button onclick="closeCheckout()" class="absolute top-4 right-4 bg-gray-100 p-2 rounded-full text-gray-600">
+                ✕
+            </button>
+            
+            <h3 class="text-xl font-extrabold text-brandBlue mb-6 text-center">إتمام الطلب</h3>
+            
+            <!-- ملخص السلة -->
+            <div class="bg-blue-50 p-4 rounded-xl mb-6 border border-blue-100 text-center">
+                <p class="text-sm font-bold text-brandBlue">إجمالي حسابك</p>
+                <p class="text-3xl font-extrabold text-brandOrange mt-1"><span id="checkout-total">0</span> ج.م</p>
+            </div>
+
+            <!-- اختيار وقت الاستلام -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-800 mb-3">⏰ هتستلم امتى؟ (عشان مفيش طوابير)</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="border border-brandOrange bg-orange-50 text-brandOrange p-3 rounded-xl text-center font-bold cursor-pointer">
+                        <input type="radio" name="time" class="hidden" checked>
+                        بعد 30 دقيقة
+                    </label>
+                    <label class="border border-gray-200 text-gray-600 p-3 rounded-xl text-center font-bold cursor-pointer hover:border-brandOrange">
+                        <input type="radio" name="time" class="hidden">
+                        بعد ساعة
+                    </label>
+                </div>
+            </div>
+
+            <!-- طريقة الدفع -->
+            <div class="mb-8">
+                <label class="block text-sm font-bold text-gray-800 mb-3">💳 طريقة الدفع</label>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer bg-white shadow-sm hover:border-brandPurple">
+                        <input type="radio" name="payment" checked class="w-5 h-5 text-brandPurple accent-brandPurple">
+                        <span class="font-bold text-gray-800">الدفع كاش عند الاستلام</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer bg-white shadow-sm hover:border-brandPurple">
+                        <input type="radio" name="payment" class="w-5 h-5 text-brandPurple accent-brandPurple">
+                        <span class="font-bold text-gray-800">فودافون كاش</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer bg-white shadow-sm hover:border-brandPurple">
+                        <input type="radio" name="payment" class="w-5 h-5 text-brandPurple accent-brandPurple">
+                        <span class="font-bold text-gray-800">إنستا باي (InstaPay)</span>
+                    </label>
+                </div>
+            </div>
+
+            <button onclick="confirmOrder()" class="w-full bg-brandPurple text-white font-extrabold text-lg py-4 rounded-xl shadow-lg hover:bg-purple-700 transition-all">
+                تأكيد الطلب 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- أنيميشن ظهور الشاشة -->
+    <style>
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    </style>
+
+    <script>
+        let cartTotal = 0;
+        let itemsCount = 0;
+
+        // وظيفة إضافة الصنف للسلة
+        function addToCart(price) {
+            cartTotal += price;
+            itemsCount++;
+            
+            // تحديث البادج بتاع السلة
+            const badge = document.getElementById('cart-badge');
+            badge.innerText = itemsCount;
+            badge.classList.remove('hidden');
+            
+            // تحديث السعر في شاشة الدفع
+            document.getElementById('checkout-total').innerText = cartTotal;
+        }
+
+        // فتح شاشة الدفع من تحت
+        function openCheckout() {
+            if(itemsCount > 0) {
+                document.getElementById('checkout-overlay').classList.remove('hidden');
+                document.getElementById('checkout-overlay').classList.add('flex');
+            } else {
+                alert("السلة بتاعتك فاضية لسه! ضيف أكل الأول 🍔");
+            }
+        }
+
+        // قفل شاشة الدفع
+        function closeCheckout() {
+            document.getElementById('checkout-overlay').classList.add('hidden');
+            document.getElementById('checkout-overlay').classList.remove('flex');
+        }
+
+        // تأكيد الطلب
+        function confirmOrder() {
+            alert('تم تأكيد طلبك بنجاح! طلبك في معادك بدون طوابير. 🚀');
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>
