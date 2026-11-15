@@ -3,97 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3al gahez - تسجيل الدخول</title>
-    <!-- استدعاء مكتبة Tailwind CSS -->
+    <title>ع الجاهز - تسجيل الدخول</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- إعدادات الألوان المخصصة من البوستر -->
     <script>
         tailwind.config = {
+            darkMode: 'media', // بيقرا إعدادات الموبايل (فاتح/غامق)
             theme: {
                 extend: {
                     colors: {
-                        brandOrange: '#f97316', 
-                        brandBlue: '#1e3a8a',   
-                        brandPurple: '#9333ea', 
-                        brandLight: '#f8fafc'   
+                        brandOrange: '#f97316',
+                        brandBlue: '#1e3a8a',
+                        brandPurple: '#9333ea',
+                        darkBg: '#0B0F19', 
+                        darkInput: 'rgba(255, 255, 255, 0.05)',
+                    },
+                    backgroundImage: {
+                        // خلفية أكل (برجر احترافي) بدل الجبال
+                        'food-pattern': "url('https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1200&auto=format&fit=crop')",
                     }
                 }
             }
         }
     </script>
-    <!-- خط كوفي عربي مناسب للتطبيقات -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         body { font-family: 'Cairo', sans-serif; }
+        .input-ltr { direction: ltr; text-align: left; }
     </style>
 </head>
-<body class="bg-brandLight min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-50 dark:bg-darkBg text-gray-900 dark:text-white min-h-screen flex flex-col transition-colors duration-300">
 
-    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md border-t-4 border-brandOrange">
-        <!-- اللوجو والترحيب -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-extrabold text-brandBlue mb-2">ع الـ<span class="text-brandOrange">جاهز</span></h1>
-            <p class="text-gray-500 font-semibold">أسرع طريقة لطلب أكلك في المعهد</p>
-        </div>
-
-        <!-- نموذج تسجيل الدخول -->
-        <form id="loginForm" class="space-y-6">
-            <div>
-                <label for="username" class="block text-sm font-bold text-brandBlue mb-2">رقم الهاتف أو اسم المستخدم</label>
-                <input type="text" id="username" required 
-                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brandPurple focus:border-transparent transition-all"
-                    placeholder="أدخل رقمك هنا...">
+    <!-- الجزء العلوي بخلفية الأكل (البرجر) -->
+    <div class="h-72 w-full bg-food-pattern bg-cover bg-center relative">
+        <!-- تدرج لوني عشان يدمج الصورة مع الصفحة ومتبقاش مزعجة للعين -->
+        <div class="absolute inset-0 bg-gradient-to-b from-darkBg/40 via-darkBg/60 to-gray-50 dark:to-darkBg"></div>
+        
+        <!-- اللوجو -->
+        <div class="absolute top-6 right-6 flex items-center gap-2 z-10">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brandOrange to-brandPurple flex items-center justify-center shadow-lg border border-white/20">
+                <span class="text-xl font-bold text-white">ع</span>
             </div>
-
-            <div>
-                <label for="password" class="block text-sm font-bold text-brandBlue mb-2">كلمة المرور</label>
-                <input type="password" id="password" required 
-                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brandPurple focus:border-transparent transition-all"
-                    placeholder="••••••••">
-            </div>
-
-            <button type="submit" 
-                class="w-full bg-brandOrange hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow-md transition-all transform hover:scale-[1.02]">
-                تسجيل الدخول
-            </button>
-        </form>
-
-        <!-- رسالة الخطأ (مخفية افتراضياً) -->
-        <div id="errorMessage" class="hidden mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm font-semibold text-center">
-            بيانات الدخول غير صحيحة!
+            <span class="text-2xl font-extrabold text-white drop-shadow-md">الـ<span class="text-brandOrange">جاهز</span></span>
         </div>
     </div>
 
-    <!-- كود الجافاسكريبت المبدئي لتوجيه المستخدمين (مؤقت بدون داتابيز) -->
+    <!-- محتوى الفورم -->
+    <div class="flex-1 px-6 pb-8 flex flex-col justify-center -mt-16 relative z-20 max-w-md mx-auto w-full">
+        
+        <!-- أزرار التبديل (دخول / إنشاء حساب) -->
+        <div class="flex bg-white dark:bg-gray-800/80 backdrop-blur-md rounded-xl p-1 mb-8 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <button onclick="toggleView('login')" id="btnLoginTab" class="flex-1 py-2.5 text-sm font-bold rounded-lg bg-gray-100 dark:bg-gray-700 text-brandOrange shadow-sm transition-all">تسجيل الدخول</button>
+            <button onclick="toggleView('register')" id="btnRegisterTab" class="flex-1 py-2.5 text-sm font-bold rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all">إنشاء حساب</button>
+        </div>
+        
+        <h1 id="formTitle" class="text-3xl font-bold mb-2">مرحباً بك مجدداً</h1>
+        <p id="formSubtitle" class="text-gray-500 dark:text-gray-400 text-sm mb-8">سجل الدخول للمتابعة إلى حسابك.</p>
+
+        <!-- ================= فورم تسجيل الدخول (رقم وباسورد بس) ================= -->
+        <form id="loginForm" class="space-y-5">
+            <div class="relative">
+                <input type="tel" id="loginPhone" required oninput="forceEnglishNumbers(this)" placeholder="رقم التليفون"
+                    class="input-ltr w-full px-5 py-4 rounded-2xl bg-white dark:bg-darkInput border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:border-brandPurple focus:ring-1 focus:ring-brandPurple transition-all shadow-sm">
+            </div>
+
+            <div class="relative">
+                <input type="password" id="loginPass" required placeholder="كلمة المرور"
+                    class="input-ltr w-full px-5 py-4 rounded-2xl bg-white dark:bg-darkInput border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:border-brandPurple focus:ring-1 focus:ring-brandPurple transition-all shadow-sm">
+                
+                <button type="button" onclick="togglePassword('loginPass', 'eyeIconLogin')" class="absolute inset-y-0 left-0 pl-5 flex items-center">
+                    <svg id="eyeIconLogin" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div id="errorMessage" class="hidden text-red-500 text-sm font-bold text-center mt-2 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg border border-red-200 dark:border-red-800/50">
+                بيانات الدخول غير صحيحة!
+            </div>
+
+            <button type="submit" class="w-full mt-4 bg-gradient-to-r from-brandBlue to-brandPurple text-white font-bold py-4 rounded-full flex justify-between items-center px-6 hover:opacity-90 transition-opacity shadow-[0_4px_14px_0_rgba(147,51,234,0.39)]">
+                <span></span>
+                <span class="text-lg">دخول</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </button>
+        </form>
+
+        <!-- ================= فورم إنشاء حساب (اسم، رقم، باسورد) ================= -->
+        <form id="registerForm" class="space-y-5 hidden">
+            <!-- حقل الاسم -->
+            <div class="relative">
+                <input type="text" id="regName" required placeholder="الاسم بالكامل"
+                    class="w-full px-5 py-4 rounded-2xl bg-white dark:bg-darkInput border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:border-brandOrange focus:ring-1 focus:ring-brandOrange transition-all shadow-sm">
+            </div>
+
+            <!-- حقل التليفون -->
+            <div class="relative">
+                <input type="tel" id="regPhone" required oninput="forceEnglishNumbers(this)" placeholder="رقم التليفون"
+                    class="input-ltr w-full px-5 py-4 rounded-2xl bg-white dark:bg-darkInput border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:border-brandOrange focus:ring-1 focus:ring-brandOrange transition-all shadow-sm">
+            </div>
+
+            <!-- حقل الباسورد -->
+            <div class="relative">
+                <input type="password" id="regPass" required placeholder="كلمة المرور"
+                    class="input-ltr w-full px-5 py-4 rounded-2xl bg-white dark:bg-darkInput border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:outline-none focus:border-brandOrange focus:ring-1 focus:ring-brandOrange transition-all shadow-sm">
+                
+                <button type="button" onclick="togglePassword('regPass', 'eyeIconReg')" class="absolute inset-y-0 left-0 pl-5 flex items-center">
+                    <svg id="eyeIconReg" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </button>
+            </div>
+
+            <button type="submit" class="w-full mt-4 bg-gradient-to-r from-brandOrange to-red-500 text-white font-bold py-4 rounded-full flex justify-between items-center px-6 hover:opacity-90 transition-opacity shadow-[0_4px_14px_0_rgba(249,115,22,0.39)]">
+                <span></span>
+                <span class="text-lg">إنشاء حساب</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </button>
+        </form>
+
+    </div>
+
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault(); // عشان الصفحة متعملش ريفريش
-            
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
+        // دالة تحويل الأرقام
+        function forceEnglishNumbers(inputElement) {
+            const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+            let val = inputElement.value;
+            for (let i = 0; i < 10; i++) {
+                let regex = new RegExp(arabicNumbers[i], 'g');
+                val = val.replace(regex, i);
+            }
+            val = val.replace(/[^0-9]/g, '');
+            inputElement.value = val;
+        }
+
+        // دالة إظهار/إخفاء الباسورد
+        function togglePassword(inputId, iconId) {
+            const passInput = document.getElementById(inputId);
+            const eyeIcon = document.getElementById(iconId);
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />`;
+            } else {
+                passInput.type = 'password';
+                eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
+            }
+        }
+
+        // التبديل بين الدخول والإنشاء
+        function toggleView(view) {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const btnLogin = document.getElementById('btnLoginTab');
+            const btnRegister = document.getElementById('btnRegisterTab');
+            const title = document.getElementById('formTitle');
+            const subtitle = document.getElementById('formSubtitle');
             const errorMessage = document.getElementById('errorMessage');
 
-            // إخفاء رسالة الخطأ مع كل محاولة جديدة
             errorMessage.classList.add('hidden');
 
-            // 1. فحص حساب الأدمن
-            if (username === 'maria' && password === '01226654756') {
-                window.location.href = 'admin-dashboard.html';
-            } 
-            // 2. فحص حساب الطالب
-            else if (username === 'student' && password === '123456') {
-                window.location.href = 'student-app.html'; 
-            } 
-            // 3. فحص حساب المطعم
-            else if (username === 'rest1' && password === '123456') {
-                // بنحفظ رقم وهمي للمطعم في المتصفح عشان نستخدمه جوه الداشبورد بعدين
-                localStorage.setItem('restaurant_id', '1');
-                window.location.href = 'restaurant-dashboard.html';
+            if (view === 'login') {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                title.innerText = 'مرحباً بك مجدداً';
+                subtitle.innerText = 'سجل الدخول للمتابعة إلى حسابك.';
+                
+                btnLogin.className = "flex-1 py-2.5 text-sm font-bold rounded-lg bg-gray-100 dark:bg-gray-700 text-brandOrange shadow-sm transition-all";
+                btnRegister.className = "flex-1 py-2.5 text-sm font-bold rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all";
+            } else {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                title.innerText = 'حساب جديد';
+                subtitle.innerText = 'أدخل بياناتك لإنشاء حسابك في ع الجاهز.';
+                
+                btnRegister.className = "flex-1 py-2.5 text-sm font-bold rounded-lg bg-gray-100 dark:bg-gray-700 text-brandOrange shadow-sm transition-all";
+                btnLogin.className = "flex-1 py-2.5 text-sm font-bold rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all";
             }
-            // لو البيانات غلط
+        }
+
+        // توجيهات مؤقتة لتجربة النظام
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const phone = document.getElementById('loginPhone').value.trim();
+            const password = document.getElementById('loginPass').value.trim();
+            const errorMessage = document.getElementById('errorMessage');
+
+            errorMessage.classList.add('hidden');
+
+            // 1. حساب الأدمن
+            if (phone === 'maria' && password === '01226654756') {
+                window.location.href = 'admin-dashboard.html';
+            }
+            // 2. حساب الطالب
+            else if (phone === '01111111111' && password === '123456') {
+                window.location.href = 'student-app.html';
+            } 
+            // 3. حساب مطعم أفندينا
+            else if (phone === '01200000000' && password === '123456') {
+                localStorage.setItem('rest_id', '1');
+                localStorage.setItem('rest_name', 'أفندينا');
+                localStorage.setItem('rest_emoji', '🥘');
+                window.location.href = 'restaurant-dashboard.html';
+            } 
+            // 4. حساب سبايسي كريب
+            else if (phone === '01200000000' && password === '123456') {
+                localStorage.setItem('rest_id', '2');
+                localStorage.setItem('rest_name', 'سبايسي كريب');
+                localStorage.setItem('rest_emoji', '🌮');
+                window.location.href = 'restaurant-dashboard.html';
+            } 
+            // 5. حساب الطباخ
+            else if (phone === '01200000003' && password === '123') {
+                localStorage.setItem('rest_id', '3');
+                localStorage.setItem('rest_name', 'الطبّاخ');
+                localStorage.setItem('rest_emoji', '🍗');
+                window.location.href = 'restaurant-dashboard.html';
+            } 
+            // خطأ في البيانات
             else {
                 errorMessage.classList.remove('hidden');
             }
+        });
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('تم إنشاء الحساب بنجاح! جاري تحويلك...');
+            window.location.href = 'student-app.html';
         });
     </script>
 </body>
