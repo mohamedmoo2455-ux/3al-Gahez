@@ -5,159 +5,488 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ع الجاهز - لوحة تحكم المطعم</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             darkMode: 'media',
-            theme: {
-                extend: {
-                    colors: {
-                        brandOrange: '#f97316',
-                        brandBlue: '#1e3a8a',
-                        brandPurple: '#9333ea',
-                        brandLight: '#f8fafc',
-                        statusNew: '#ef4444',     /* أحمر للطلبات الجديدة */
-                        statusPrep: '#f59e0b',    /* برتقالي للتجهيز */
-                        statusReady: '#10b981',   /* أخضر للجاهز */
-                        statusDone: '#6b7280'     /* رمادي للي اتسلم */
-                    }
+            theme: { extend: {
+                colors: {
+                    brandOrange: '#f97316', brandBlue: '#1e3a8a',
+                    brandPurple: '#9333ea', statusNew: '#ef4444',
+                    statusPrep: '#f59e0b', statusReady: '#10b981',
+                    statusDone: '#6b7280'
                 }
-            }
-        }
+            }}
+        };
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         body { font-family: 'Cairo', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
     </style>
 </head>
- <body class="bg-gray-50 dark:bg-[#0B0F19] text-gray-900 dark:text-white transition-colors duration-300"></body>
-
-    <!-- شريط علوي للداشبورد -->
+<body class="bg-gray-50 dark:bg-[#0B0F19] text-gray-900 dark:text-white transition-colors duration-300">
     <header class="bg-brandBlue text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-            <h1 class="text-2xl font-extrabold">لوحة تحكم: <span class="text-brandOrange">كافيتريا المعهد</span></h1>
-            <div class="flex items-center gap-4">
-                <!-- زر فتح/قفل المطعم -->
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" checked class="sr-only peer">
-                    <div class="w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                    <span class="mr-3 text-sm font-bold">المطعم مفتوح</span>
-                </label>
-                <button onclick="logout()" class="text-sm bg-white text-brandBlue px-3 py-1 rounded font-bold hover:bg-gray-100">خروج</button>
-            </div>
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center gap-3">
+            <h1 class="text-xl md:text-2xl font-extrabold">لوحة تحكم: <span class="text-brandOrange" id="restName">جاري التحميل...</span></h1>
+            <button onclick="logout()" class="text-sm bg-white text-brandBlue px-3 py-1 rounded font-bold hover:bg-gray-200 transition-colors">خروج</button>
         </div>
     </header>
 
     <main class="max-w-4xl mx-auto px-4 py-6">
+        <div id="page-message" class="hidden mb-5 rounded-lg p-3 text-sm font-bold" role="alert"></div>
 
-        <!-- إحصائيات سريعة -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-white p-4 rounded-xl shadow-sm border-r-4 border-statusNew">
-                <p class="text-sm text-gray-500 font-bold">طلبات جديدة</p>
-                <p class="text-2xl font-extrabold text-statusNew">3</p>
+        <div class="flex bg-white dark:bg-gray-800 rounded-xl p-1 mb-6 shadow-sm border border-gray-200 dark:border-gray-700">
+            <button onclick="switchTab('orders')" id="btn-orders" class="flex-1 py-2 font-bold rounded-lg bg-brandOrange text-white transition-all">الطلبات الحالية</button>
+            <button onclick="switchTab('menu')" id="btn-menu" class="flex-1 py-2 font-bold rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all bg-transparent">إدارة المنيو</button>
+        </div>
+
+        <div id="orders-tab" class="tab-content active">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-r-4 border-statusNew">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-bold">طلبات جديدة</p>
+                    <p class="text-2xl font-extrabold text-statusNew" id="stat-new">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-r-4 border-statusPrep">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-bold">جاري التجهيز</p>
+                    <p class="text-2xl font-extrabold text-statusPrep" id="stat-prep">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-r-4 border-statusReady">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-bold">جاهز للاستلام</p>
+                    <p class="text-2xl font-extrabold text-statusReady" id="stat-ready">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-r-4 border-statusDone">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-bold">مكتمل</p>
+                    <p class="text-2xl font-extrabold text-statusDone" id="stat-done">0</p>
+                </div>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border-r-4 border-statusPrep">
-                <p class="text-sm text-gray-500 font-bold">جاري التجهيز</p>
-                <p class="text-2xl font-extrabold text-statusPrep">2</p>
-            </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border-r-4 border-statusReady">
-                <p class="text-sm text-gray-500 font-bold">جاهز للاستلام</p>
-                <p class="text-2xl font-extrabold text-statusReady">1</p>
-            </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border-r-4 border-statusDone">
-                <p class="text-sm text-gray-500 font-bold">تم التسليم اليوم</p>
-                <p class="text-2xl font-extrabold text-statusDone">15</p>
+            <div class="grid gap-4 md:grid-cols-2" id="orders-container">
+                <p class="text-gray-500 font-bold text-center col-span-full py-10">جاري تحميل الطلبات...</p>
             </div>
         </div>
 
-        <!-- قائمة الطلبات -->
-        <h2 class="text-xl font-bold text-brandBlue mb-4">الطلبات الحالية</h2>
-        
-        <div class="grid gap-4 md:grid-cols-2" id="orders-container">
-            
-            <!-- أوردر 1 (جديد) -->
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-red-200">
-                <div class="flex justify-between items-start mb-3">
-                    <div>
-                        <span class="bg-statusNew text-white text-xs px-2 py-1 rounded font-bold">جديد</span>
-                        <h3 class="font-bold text-lg mt-1">طلب #1042</h3>
-                        <p class="text-sm text-gray-600">الطالب: أحمد سيد (01012345678)</p>
-                    </div>
-                    <div class="text-left">
-                        <p class="text-brandOrange font-extrabold text-lg">120 ج.م</p>
-                        <p class="text-xs text-gray-500">دفع كاش</p>
-                    </div>
-                </div>
-                
-                <div class="bg-gray-50 p-3 rounded-lg text-sm mb-4">
-                    <ul class="list-disc list-inside space-y-1">
-                        <li>2x برجر لحم دبل</li>
-                        <li>1x بطاطس محمرة</li>
-                    </ul>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div class="text-sm font-bold bg-brandPurple text-white px-3 py-1 rounded-full">
-                        استلام: 12:30 م
-                    </div>
-                    <select class="border border-gray-300 rounded p-1 text-sm font-bold bg-gray-50 focus:outline-none" onchange="updateStatus(this, '1042')">
-                        <option value="new" selected>التحويل لحالة...</option>
-                        <option value="prep">جاري التجهيز 👨‍🍳</option>
-                        <option value="ready">جاهز للاستلام ✅</option>
-                        <option value="done">تم التسليم 🏁</option>
-                    </select>
-                </div>
+        <div id="menu-tab" class="tab-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-brandBlue dark:text-white">أصناف المنيو</h2>
+                <button onclick="openAddModal()" class="bg-brandOrange hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors">+ إضافة صنف جديد</button>
             </div>
-
-            <!-- أوردر 2 (جاري التجهيز) -->
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-yellow-200">
-                <div class="flex justify-between items-start mb-3">
-                    <div>
-                        <span class="bg-statusPrep text-white text-xs px-2 py-1 rounded font-bold">جاري التجهيز</span>
-                        <h3 class="font-bold text-lg mt-1">طلب #1041</h3>
-                        <p class="text-sm text-gray-600">الطالب: سارة محمد (01198765432)</p>
-                    </div>
-                    <div class="text-left">
-                        <p class="text-brandOrange font-extrabold text-lg">45 ج.م</p>
-                        <p class="text-xs text-green-600 font-bold">فودافون كاش (مدفوع)</p>
-                    </div>
-                </div>
-                
-                <div class="bg-gray-50 p-3 rounded-lg text-sm mb-4">
-                    <ul class="list-disc list-inside space-y-1">
-                        <li>1x شاورما فراخ سوري</li>
-                    </ul>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div class="text-sm font-bold bg-brandPurple text-white px-3 py-1 rounded-full">
-                        استلام: 12:00 م
-                    </div>
-                    <select class="border border-gray-300 rounded p-1 text-sm font-bold bg-gray-50 focus:outline-none" onchange="updateStatus(this, '1041')">
-                        <option value="prep" selected>التحويل لحالة...</option>
-                        <option value="ready">جاهز للاستلام ✅</option>
-                        <option value="done">تم التسليم 🏁</option>
-                    </select>
-                </div>
+            <div id="menu-container" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
+                <p class="text-gray-500 font-bold text-center py-10">جاري تحميل المنيو...</p>
             </div>
-
         </div>
     </main>
 
+    <!-- نافذة إضافة صنف جديد -->
+    <div id="add-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-xl">
+            <h3 class="text-lg font-extrabold text-brandBlue dark:text-white">إضافة صنف جديد</h3>
+            <input type="text" id="new-name" placeholder="اسم الصنف (مثلاً: كريب زنجر)" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-2.5 text-sm">
+            <input type="text" id="new-category" placeholder="القسم (مثلاً: كريب حادق، برجر)" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-2.5 text-sm">
+            <input type="number" id="new-price" placeholder="السعر بالجنيه" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-2.5 text-sm">
+            <input type="text" id="new-desc" placeholder="الوصف (اختياري)" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-2.5 text-sm">
+            <input type="text" id="new-img" placeholder="رابط صورة من النت (اختياري)" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-2.5 text-sm">
+            <label class="flex items-center gap-2 text-sm font-bold">
+                <input type="checkbox" id="new-spicy" class="w-4 h-4 accent-brandOrange">
+                <span>يوجد اختيار (عادي / سبايسي)</span>
+            </label>
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveNewItem()" class="flex-1 bg-brandOrange text-white py-2.5 rounded-lg font-bold text-sm">حفظ</button>
+                <button onclick="closeAddModal()" class="flex-1 bg-gray-200 dark:bg-gray-700 py-2.5 rounded-lg font-bold text-sm">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة تعديل السعر -->
+    <div id="edit-price-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-xl">
+            <h3 class="text-lg font-extrabold text-brandBlue dark:text-white">تعديل سعر الصنف</h3>
+            <input type="number" step="0.5" min="0" id="edit-price-input" placeholder="السعر الجديد بالجنيه" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-2.5 text-sm">
+            <div class="flex gap-2 pt-2">
+                <button type="button" onclick="confirmEditPrice()" class="flex-1 bg-brandOrange text-white py-2.5 rounded-lg font-bold text-sm">حفظ السعر</button>
+                <button type="button" onclick="closeEditPriceModal()" class="flex-1 bg-gray-200 dark:bg-gray-700 py-2.5 rounded-lg font-bold text-sm">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function updateStatus(selectElement, orderId) {
-            const newStatus = selectElement.value;
-            // هنا هيتم إرسال طلب لـ Supabase عشان يحدث حالة الأوردر ده
-            // بمجرد ما تتحدث في الداتابيز، الطالب هيشوفها اتغيرت عنده في الأبلكيشن
-            console.log(`تم تحديث الأوردر ${orderId} إلى الحالة: ${newStatus}`);
-            alert('تم تحديث حالة الطلب بنجاح للطالب!');
-            
-            // في التطبيق الحقيقي، هنعمل تغيير للون الكارت حسب الحالة الجديدة
+    (() => {
+        const supabaseUrl = 'https://tbebxktkqluhwdtuzmny.supabase.co';
+        const supabaseKey = 'sb_publishable_BB-2fI8-0OvAo1O1ISPVjw_2o1AuxAJ';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let currentUser = null;
+        let currentProfile = null;
+        let currentRestaurant = null;
+        let refreshTimer = null;
+        let editingItemId = null;
+
+        const $ = (id) => document.getElementById(id);
+        const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[ch]);
+
+        function showMessage(message, type = 'error') {
+            const box = $('page-message');
+            box.textContent = message;
+            box.className = 'mb-5 rounded-lg p-3 text-sm font-bold ' +
+                (type === 'success'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200');
+            setTimeout(() => box.classList.add('hidden'), 4000);
         }
 
-        function logout() {
-            localStorage.removeItem('restaurant_id');
-            window.location.href = 'login.html';
+        function switchTab(tabName) {
+            $('orders-tab').classList.toggle('active', tabName === 'orders');
+            $('menu-tab').classList.toggle('active', tabName === 'menu');
+            $('btn-orders').className = tabName === 'orders'
+                ? 'flex-1 py-2 font-bold rounded-lg bg-brandOrange text-white transition-all'
+                : 'flex-1 py-2 font-bold rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all bg-transparent';
+            $('btn-menu').className = tabName === 'menu'
+                ? 'flex-1 py-2 font-bold rounded-lg bg-brandOrange text-white transition-all'
+                : 'flex-1 py-2 font-bold rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all bg-transparent';
+            if (tabName === 'menu') fetchMenu();
         }
+
+        async function initializeDashboard() {
+            try {
+                const { data: authData, error: authError } = await supabaseClient.auth.getUser();
+                if (authError) throw authError;
+                currentUser = authData.user;
+                if (!currentUser) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('users_profiles')
+                    .select('*')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (profileError) throw new Error('تعذر قراءة ملف المستخدم: ' + profileError.message);
+                if (!profile || !profile.restaurant_id) {
+                    throw new Error('الحساب الحالي غير مربوط بمطعم في users_profiles.');
+                }
+
+                currentProfile = profile;
+                const { data: restaurant, error: restaurantError } = await supabaseClient
+                    .from('restaurants')
+                    .select('*')
+                    .eq('id', profile.restaurant_id)
+                    .single();
+
+                if (restaurantError) throw new Error('تعذر قراءة بيانات المطعم: ' + restaurantError.message);
+                currentRestaurant = restaurant;
+
+                $('restName').textContent = restaurant.name || 'المطعم';
+                await Promise.all([fetchOrders(), fetchMenu()]);
+
+                if (refreshTimer) clearInterval(refreshTimer);
+                refreshTimer = setInterval(fetchOrders, 15000);
+            } catch (error) {
+                console.error(error);
+                showMessage(error.message || 'تعذر تهيئة لوحة التحكم.');
+                $('orders-container').innerHTML = '<p class="text-red-500 text-center col-span-full py-10">تعذر تحميل لوحة التحكم.</p>';
+            }
+        }
+
+        async function fetchOrders() {
+            if (!currentRestaurant) return;
+            const container = $('orders-container');
+            try {
+                const { data: orders, error } = await supabaseClient
+                    .from('orders')
+                    .select('*')
+                    .eq('restaurant_id', currentRestaurant.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                const rows = orders || [];
+                $('stat-new').textContent = rows.filter(o => o.status === 'new').length;
+                $('stat-prep').textContent = rows.filter(o => o.status === 'prep').length;
+                $('stat-ready').textContent = rows.filter(o => o.status === 'ready').length;
+                $('stat-done').textContent = rows.filter(o => o.status === 'done').length;
+
+                if (!rows.length) {
+                    container.innerHTML = '<p class="text-gray-500 font-bold text-center col-span-full py-10">لا توجد طلبات حتى الآن.</p>';
+                    return;
+                }
+
+                container.innerHTML = rows.map(renderOrderCard).join('');
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = '<p class="text-red-500 text-center col-span-full py-10">حدث خطأ في تحميل الطلبات: ' + escapeHtml(error.message) + '</p>';
+            }
+        }
+
+        function renderOrderCard(order) {
+            const statusMap = {
+                new:   { label: 'جديد', color: 'bg-statusNew', border: 'border-red-200 dark:border-red-900/50' },
+                prep:  { label: 'جاري التجهيز', color: 'bg-statusPrep', border: 'border-orange-200 dark:border-orange-900/50' },
+                ready: { label: 'جاهز', color: 'bg-statusReady', border: 'border-green-200 dark:border-green-900/50' },
+                done:  { label: 'مكتمل', color: 'bg-statusDone', border: 'border-gray-200 dark:border-gray-700' },
+                cancelled: { label: 'ملغي', color: 'bg-gray-500', border: 'border-gray-200 dark:border-gray-700' }
+            };
+            const status = statusMap[order.status] || { label: order.status || 'غير محدد', color: 'bg-gray-500', border: 'border-gray-200 dark:border-gray-700' };
+            const items = Array.isArray(order.items) ? order.items : [];
+            const itemsHtml = items.length
+                ? items.map(item => `<li>${escapeHtml(item.quantity || 1)} × ${escapeHtml(item.name || item.title || 'صنف')}</li>`).join('')
+                : '<li>لا توجد تفاصيل أصناف.</li>';
+            const created = order.created_at ? new Date(order.created_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : 'غير متاح';
+            const total = order.total_price == null ? '—' : escapeHtml(order.total_price);
+            const canChange = !['done', 'cancelled'].includes(order.status);
+            const canCancel = order.status === 'new';
+
+            return `
+                <article class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border ${status.border} relative overflow-hidden transition-all">
+                    ${order.status === 'new' ? '<div class="absolute top-0 left-0 right-0 bg-red-100 text-red-600 text-[10px] font-bold text-center py-0.5">طلب جديد - يرجى البدء في التجهيز</div>' : ''}
+                    <div class="flex justify-between items-start mb-2 ${order.status === 'new' ? 'mt-3' : ''}">
+                        <div>
+                            <span class="${status.color} text-white text-xs px-2 py-1 rounded font-bold">${escapeHtml(status.label)}</span>
+                            <h3 class="font-bold text-lg mt-2">طلب #${escapeHtml(order.id)}</h3>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-brandOrange font-extrabold text-lg">${total} ج.م</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-2.5 rounded-xl mb-3 text-sm border border-gray-200 dark:border-gray-600">
+                        <span class="font-bold">👤 ${escapeHtml(order.customer_name || 'طالب')}</span>
+                        ${order.customer_phone ? `
+                            <a href="tel:${escapeHtml(order.customer_phone)}" class="text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1 hover:underline" dir="ltr">
+                                📞 ${escapeHtml(order.customer_phone)}
+                            </a>
+                        ` : '<span class="text-gray-400 text-xs">بدون رقم</span>'}
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg text-sm mb-4 border border-gray-100 dark:border-gray-700">
+                        <ul class="list-disc list-inside space-y-1">${itemsHtml}</ul>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <span class="text-sm font-bold bg-brandPurple text-white px-3 py-1 rounded-full">وقت الطلب: ${escapeHtml(created)}</span>
+                        <div class="flex items-center gap-2">
+                            <select ${canChange ? '' : 'disabled'} class="border border-gray-300 dark:border-gray-600 rounded p-1 text-sm font-bold bg-gray-50 dark:bg-gray-700" onchange="updateStatus(this, '${escapeHtml(order.id)}')">
+                                <option value="new" ${order.status === 'new' ? 'selected' : ''}>جديد</option>
+                                <option value="prep" ${order.status === 'prep' ? 'selected' : ''}>جاري التجهيز 👨‍🍳</option>
+                                <option value="ready" ${order.status === 'ready' ? 'selected' : ''}>جاهز للاستلام ✅</option>
+                                <option value="done" ${order.status === 'done' ? 'selected' : ''}>تم التسليم 🏁</option>
+                            </select>
+                            ${canCancel ? `<button onclick="cancelOrder('${escapeHtml(order.id)}')" class="text-xs font-bold text-red-600 border border-red-200 rounded px-2 py-1 hover:bg-red-50">إلغاء</button>` : ''}
+                        </div>
+                    </div>
+                </article>`;
+        }
+
+        async function updateStatus(selectElement, orderId) {
+            const newStatus = selectElement.value;
+            selectElement.disabled = true;
+            try {
+                const { error } = await supabaseClient
+                    .from('orders')
+                    .update({ status: newStatus })
+                    .eq('id', Number(orderId))
+                    .eq('restaurant_id', currentRestaurant.id);
+                if (error) throw error;
+                showMessage('تم تحديث حالة الطلب بنجاح.', 'success');
+                await fetchOrders();
+            } catch (error) {
+                console.error(error);
+                showMessage('لم يتم تحديث الحالة: ' + error.message);
+                await fetchOrders();
+            } finally {
+                selectElement.disabled = false;
+            }
+        }
+
+        async function cancelOrder(orderId) {
+            if (!confirm('هل أنت متأكد من إلغاء هذا الطلب؟')) return;
+            try {
+                const { error } = await supabaseClient
+                    .from('orders')
+                    .update({ status: 'cancelled' })
+                    .eq('id', Number(orderId))
+                    .eq('restaurant_id', currentRestaurant.id);
+                if (error) throw error;
+                showMessage('تم إلغاء الطلب بنجاح.', 'success');
+                await fetchOrders();
+            } catch (error) {
+                console.error(error);
+                showMessage('لم يتم إلغاء الطلب: ' + error.message);
+            }
+        }
+
+        async function fetchMenu() {
+            if (!currentRestaurant) return;
+            const container = $('menu-container');
+            try {
+                const { data: items, error } = await supabaseClient
+                    .from('menu_items')
+                    .select('*')
+                    .eq('restaurant_id', currentRestaurant.id)
+                    .order('id', { ascending: false });
+
+                if (error) throw error;
+                if (!items || !items.length) {
+                    container.innerHTML = '<p class="text-gray-500 font-bold text-center py-10">لا توجد أصناف في المنيو حالياً.</p>';
+                    return;
+                }
+
+                container.innerHTML = items.map(item => {
+                    const available = item.is_available !== false;
+                    return `
+                        <div class="p-4 flex flex-wrap justify-between items-center gap-3">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h3 class="font-bold">${escapeHtml(item.name)}</h3>
+                                    ${item.category ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">${escapeHtml(item.category)}</span>` : ''}
+                                </div>
+                                ${item.description ? `<p class="text-xs text-gray-500 mt-1">${escapeHtml(item.description)}</p>` : ''}
+                                <p class="text-sm text-brandOrange font-bold mt-1">${escapeHtml(item.price)} ج.م</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="editPrice('${escapeHtml(item.id)}', '${escapeHtml(item.price)}')" class="text-xs bg-gray-100 dark:bg-gray-700 px-2.5 py-1.5 rounded font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">تعديل السعر</button>
+                                <label class="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-700 px-2.5 py-1.5 rounded cursor-pointer">
+                                    <input type="checkbox" ${available ? 'checked' : ''} onchange="toggleMenuAvailability(this, ${item.id})">
+                                    <span>${available ? 'متاح' : 'مغلق'}</span>
+                                </label>
+                                <button onclick="deleteItem(${item.id})" class="text-xs bg-red-100 text-red-600 px-2 py-1.5 rounded font-bold">🗑️</button>
+                            </div>
+                        </div>`;
+                }).join('');
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = '<p class="text-red-500 text-center py-10">حدث خطأ في تحميل المنيو: ' + escapeHtml(error.message) + '</p>';
+            }
+        }
+
+        async function toggleMenuAvailability(checkbox, itemId) {
+            const wantedValue = checkbox.checked;
+            checkbox.disabled = true;
+            try {
+                const { error } = await supabaseClient
+                    .from('menu_items')
+                    .update({ is_available: wantedValue })
+                    .eq('id', itemId)
+                    .eq('restaurant_id', currentRestaurant.id);
+                if (error) throw error;
+                showMessage('تم تحديث توافر الصنف.', 'success');
+                await fetchMenu();
+            } catch (error) {
+                console.error(error);
+                checkbox.checked = !wantedValue;
+                showMessage('تعذر تحديث توافر الصنف: ' + error.message);
+            } finally {
+                checkbox.disabled = false;
+            }
+        }
+
+        function editPrice(itemId, oldPrice) {
+            editingItemId = itemId;
+            $('edit-price-input').value = oldPrice ?? '';
+            $('edit-price-modal').classList.remove('hidden');
+            $('edit-price-modal').classList.add('flex');
+            $('edit-price-input').focus();
+        }
+
+        function closeEditPriceModal() {
+            editingItemId = null;
+            $('edit-price-modal').classList.add('hidden');
+            $('edit-price-modal').classList.remove('flex');
+        }
+
+        async function confirmEditPrice() {
+            const rawVal = $('edit-price-input').value;
+            const newPrice = Number(rawVal);
+            if (!editingItemId || rawVal === '' || isNaN(newPrice) || newPrice < 0) {
+                return showMessage('أدخل سعراً صحيحاً.');
+            }
+
+            const filterId = /^\d+$/.test(String(editingItemId)) ? Number(editingItemId) : editingItemId;
+
+            const { error } = await supabaseClient
+                .from('menu_items')
+                .update({ price: newPrice })
+                .eq('id', filterId)
+                .eq('restaurant_id', currentRestaurant.id);
+
+            if (error) {
+                showMessage('خطأ في تعديل السعر: ' + error.message);
+            } else {
+                showMessage('تم تعديل السعر بنجاح.', 'success');
+                closeEditPriceModal();
+                await fetchMenu();
+            }
+        }
+
+        async function deleteItem(itemId) {
+            if (!confirm('متأكد إنك عايز تمسح الصنف ده؟')) return;
+            const { error } = await supabaseClient
+                .from('menu_items')
+                .delete()
+                .eq('id', itemId)
+                .eq('restaurant_id', currentRestaurant.id);
+            if (error) showMessage('خطأ في الحذف: ' + error.message);
+            else { showMessage('تم حذف الصنف.', 'success'); fetchMenu(); }
+        }
+
+        function openAddModal() {
+            $('add-modal').classList.remove('hidden');
+            $('add-modal').classList.add('flex');
+        }
+
+        function closeAddModal() {
+            $('add-modal').classList.add('hidden');
+            $('add-modal').classList.remove('flex');
+        }
+
+        async function saveNewItem() {
+            const name = $('new-name').value.trim();
+            const category = $('new-category').value.trim();
+            const price = Number($('new-price').value);
+            const description = $('new-desc').value.trim();
+            const image_url = $('new-img').value.trim() || null;
+            const has_spicy = $('new-spicy').checked;
+
+            if (!name || !category || !price) return alert('اكتب الاسم والقسم والسعر!');
+
+            const { error } = await supabaseClient.from('menu_items').insert([{
+                restaurant_id: currentRestaurant.id,
+                name, category, price, description, image_url, has_spicy, is_available: true
+            }]);
+
+            if (error) showMessage('خطأ في الإضافة: ' + error.message);
+            else {
+                closeAddModal();
+                ['new-name', 'new-category', 'new-price', 'new-desc', 'new-img'].forEach(id => $(id).value = '');
+                $('new-spicy').checked = false;
+                showMessage('تمت إضافة الصنف للمنيو بنجاح.', 'success');
+                fetchMenu();
+            }
+        }
+
+        async function logout() {
+            if (refreshTimer) clearInterval(refreshTimer);
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) return showMessage('تعذر تسجيل الخروج: ' + error.message);
+            window.location.href = 'index.html';
+        }
+
+        window.switchTab = switchTab;
+        window.updateStatus = updateStatus;
+        window.cancelOrder = cancelOrder;
+        window.toggleMenuAvailability = toggleMenuAvailability;
+        window.editPrice = editPrice;
+        window.closeEditPriceModal = closeEditPriceModal;
+        window.confirmEditPrice = confirmEditPrice;
+        window.deleteItem = deleteItem;
+        window.openAddModal = openAddModal;
+        window.closeAddModal = closeAddModal;
+        window.saveNewItem = saveNewItem;
+        window.logout = logout;
+        window.addEventListener('DOMContentLoaded', initializeDashboard);
+    })();
     </script>
 </body>
 </html>
