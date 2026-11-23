@@ -28,9 +28,18 @@
 </head>
 <body class="bg-gray-50 dark:bg-[#0B0F19] text-gray-900 dark:text-white transition-colors duration-300">
     <header class="bg-brandBlue text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center gap-3">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
             <h1 class="text-xl md:text-2xl font-extrabold">لوحة تحكم: <span class="text-brandOrange" id="restName">جاري التحميل...</span></h1>
-            <button onclick="logout()" class="text-sm bg-white text-brandBlue px-3 py-1 rounded font-bold hover:bg-gray-200 transition-colors">خروج</button>
+            <div class="flex items-center gap-2">
+                <button
+                    type="button"
+                    id="toggleOpenBtn"
+                    onclick="toggleRestaurantOpen()"
+                    class="text-xs md:text-sm px-3 py-1.5 rounded-lg font-extrabold transition-colors bg-emerald-500 hover:bg-emerald-600 text-white">
+                    جاري التحميل...
+                </button>
+                <button onclick="logout()" class="text-sm bg-white text-brandBlue px-3 py-1.5 rounded-lg font-bold hover:bg-gray-200 transition-colors">خروج</button>
+            </div>
         </div>
     </header>
 
@@ -136,6 +145,45 @@
             setTimeout(() => box.classList.add('hidden'), 4000);
         }
 
+        function renderOpenButton() {
+            const btn = $('toggleOpenBtn');
+            if (!btn || !currentRestaurant) return;
+            const isOpen = currentRestaurant.is_open !== false;
+            if (isOpen) {
+                btn.textContent = '🟢 المطعم مفتوح (اضغط للقفل)';
+                btn.className = 'text-xs md:text-sm px-3 py-1.5 rounded-lg font-extrabold transition-colors bg-emerald-500 hover:bg-emerald-600 text-white';
+            } else {
+                btn.textContent = '🔴 المطعم مغلق (اضغط للفتح)';
+                btn.className = 'text-xs md:text-sm px-3 py-1.5 rounded-lg font-extrabold transition-colors bg-red-600 hover:bg-red-700 text-white';
+            }
+        }
+
+        async function toggleRestaurantOpen() {
+            if (!currentRestaurant) return;
+            const btn = $('toggleOpenBtn');
+            const nextState = !(currentRestaurant.is_open !== false);
+            if (btn) btn.disabled = true;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('restaurants')
+                    .update({ is_open: nextState })
+                    .eq('id', currentRestaurant.id)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                currentRestaurant = data || { ...currentRestaurant, is_open: nextState };
+                renderOpenButton();
+                showMessage(nextState ? 'تم فتح المطعم للطلاب بنجاح.' : 'تم قفل المطعم مؤقتاً.', 'success');
+            } catch (error) {
+                console.error(error);
+                showMessage('تعذر تحديث حالة المطعم: ' + error.message);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
         function switchTab(tabName) {
             $('orders-tab').classList.toggle('active', tabName === 'orders');
             $('menu-tab').classList.toggle('active', tabName === 'menu');
@@ -180,6 +228,7 @@
                 currentRestaurant = restaurant;
 
                 $('restName').textContent = restaurant.name || 'المطعم';
+                renderOpenButton();
                 await Promise.all([fetchOrders(), fetchMenu()]);
 
                 if (refreshTimer) clearInterval(refreshTimer);
@@ -473,6 +522,7 @@
             window.location.href = 'index.html';
         }
 
+        window.toggleRestaurantOpen = toggleRestaurantOpen;
         window.switchTab = switchTab;
         window.updateStatus = updateStatus;
         window.cancelOrder = cancelOrder;

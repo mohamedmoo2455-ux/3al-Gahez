@@ -67,6 +67,11 @@
         <div class="flex gap-4 overflow-x-auto px-4 hide-scrollbar" id="restaurants-container"></div>
     </div>
 
+    <!-- بانر حالة المطعم المغلق -->
+    <div id="closed-restaurant-banner" class="hidden mx-4 mt-2 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 p-3 text-xs font-extrabold text-red-600 dark:text-red-300 text-center">
+        🔴 هذا المطعم مغلق حالياً ولا يستقبل طلبات.
+    </div>
+
     <!-- شريط البحث -->
     <div class="px-4 mt-3">
         <input type="text" id="search-input" oninput="filterAndDisplayMenu()" placeholder="🔍 ابحث عن أكلة (مثلاً: زنجر، كشري، برجر)..." class="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:border-brandOrange transition-colors">
@@ -188,11 +193,11 @@
         const supabaseKey = 'sb_publishable_BB-2fI8-0OvAo1O1ISPVjw_2o1AuxAJ';
         const supabaseApp = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        const restaurants = [
-            { id: 1, name: 'أفندينا', emoji: '🥘' },
-            { id: 2, name: 'كريب اند وافل', emoji: '🧇' },
-            { id: 3, name: 'سبايسي كريب', emoji: '🌮' },
-            { id: 4, name: 'الطباخ', emoji: '🍗' }
+        let restaurants = [
+            { id: 1, name: 'أفندينا', emoji: '🥘', is_open: true },
+            { id: 2, name: 'كريب اند وافل', emoji: '🧇', is_open: true },
+            { id: 3, name: 'سبايسي كريب', emoji: '🌮', is_open: true },
+            { id: 4, name: 'الطباخ', emoji: '🍗', is_open: true }
         ];
 
         let currentActiveRestaurant = 1;
@@ -204,28 +209,73 @@
         let activeOrderId = null;
         let orderInterval, cancelInterval, statusPollInterval;
 
-        window.addEventListener('DOMContentLoaded', () => {
+        function isRestaurantOpen(id) {
+            const rest = restaurants.find(r => String(r.id) === String(id));
+            return rest ? rest.is_open !== false : true;
+        }
+
+        function updateClosedBanner() {
+            const banner = document.getElementById('closed-restaurant-banner');
+            if (!banner) return;
+            const open = isRestaurantOpen(currentActiveRestaurant);
+            banner.classList.toggle('hidden', open);
+        }
+
+        async function syncRestaurantsStatus() {
+            try {
+                const { data, error } = await supabaseApp
+                    .from('restaurants')
+                    .select('id, name, is_open');
+                if (error || !Array.isArray(data) || !data.length) return;
+
+                const statusById = new Map(data.map(r => [String(r.id), r]));
+                restaurants = restaurants.map(r => {
+                    const dbRest = statusById.get(String(r.id));
+                    return dbRest ? { ...r, name: dbRest.name || r.name, is_open: dbRest.is_open !== false } : r;
+                });
+
+                data.forEach(dbRest => {
+                    if (!restaurants.some(r => String(r.id) === String(dbRest.id))) {
+                        restaurants.push({
+                            id: dbRest.id,
+                            name: dbRest.name || `مطعم #${dbRest.id}`,
+                            emoji: '🍽️',
+                            is_open: dbRest.is_open !== false
+                        });
+                    }
+                });
+
+                renderRestaurants();
+                updateClosedBanner();
+            } catch (_) {}
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => { 
                 const locText = document.getElementById('location-text');
                 if(locText) locText.innerText = '📍 المعهد العالي بالقطامية'; 
             }, 1500);
             
             renderRestaurants();
-            selectRestaurant(1); 
+            await syncRestaurantsStatus();
+            selectRestaurant(currentActiveRestaurant);
+            setInterval(syncRestaurantsStatus, 15000);
         });
 
         function renderRestaurants() {
             const container = document.getElementById('restaurants-container');
             container.innerHTML = restaurants.map(rest => {
-                const isActive = rest.id === currentActiveRestaurant;
+                const isActive = String(rest.id) === String(currentActiveRestaurant);
+                const isOpen = rest.is_open !== false;
                 const activeClasses = isActive ? 'from-brandOrange to-brandPurple active-story' : 'bg-gray-200 dark:bg-white/10 border-transparent';
-                const opacity = isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100';
+                const opacity = !isOpen ? 'opacity-50' : (isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100');
                 const textActive = isActive ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400';
 
                 return `
-                    <div onclick="selectRestaurant(${rest.id})" class="flex flex-col items-center gap-2 min-w-[75px] cursor-pointer ${opacity} transition-all">
-                        <div class="w-16 h-16 rounded-full p-[3px] bg-gradient-to-tr ${activeClasses}">
+                    <div onclick="selectRestaurant(${rest.id})" class="flex flex-col items-center gap-1.5 min-w-[78px] cursor-pointer ${opacity} transition-all relative">
+                        <div class="w-16 h-16 rounded-full p-[3px] bg-gradient-to-tr ${activeClasses} relative">
                             <div class="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center text-2xl border-2 border-white dark:border-gray-900">${rest.emoji}</div>
+                            ${!isOpen ? '<span class="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full whitespace-nowrap shadow">مغلق</span>' : ''}
                         </div>
                         <span class="text-xs font-bold ${textActive} text-center">${rest.name}</span>
                     </div>
@@ -234,7 +284,7 @@
         }
 
         function selectRestaurant(id) {
-            if (id !== currentActiveRestaurant && cartItems.length > 0) {
+            if (String(id) !== String(currentActiveRestaurant) && cartItems.length > 0) {
                 if (!confirm('تغيير المطعم هيمسح السلة الحالية، متأكد؟')) return;
                 cartItems = [];
                 updateCartUI();
@@ -243,6 +293,7 @@
             currentCategory = 'الكل';
             document.getElementById('search-input').value = '';
             renderRestaurants();
+            updateClosedBanner();
             loadRestaurantMenu(id);
         }
 
@@ -273,7 +324,6 @@
                 if (error) throw error;
                 currentRestaurantItems = items || [];
 
-                // استخراج الأقسام أوتوماتيك من الداتابيز
                 const uniqueCats = ['الكل', ...new Set(currentRestaurantItems.map(i => i.category).filter(Boolean))];
                 renderCategories(uniqueCats);
                 filterAndDisplayMenu();
@@ -302,6 +352,7 @@
         function filterAndDisplayMenu() {
             const container = document.getElementById('menu-container');
             const searchQuery = document.getElementById('search-input').value.trim().toLowerCase();
+            const open = isRestaurantOpen(currentActiveRestaurant);
 
             let filtered = currentRestaurantItems;
             if (currentCategory !== 'الكل') {
@@ -322,15 +373,19 @@
             container.innerHTML = filtered.map(item => {
                 const imgUrl = item.image_url ? item.image_url : getSmartImage(item.category);
                 const itemData = encodeURIComponent(JSON.stringify(item));
+                const btnHtml = open
+                    ? `<button onclick="openItemOptionsDynamic('${itemData}')" class="bg-gray-100 dark:bg-white/10 text-brandBlue dark:text-white px-4 py-1.5 rounded-lg font-bold text-sm hover:bg-brandPurple hover:text-white transition-all">+ أضف</button>`
+                    : `<span class="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 px-3 py-1 rounded-lg font-bold text-xs">مغلق</span>`;
+
                 return `
-                    <div class="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-3xl p-3 flex gap-4 items-center shadow-sm hover:border-brandPurple/50 transition-all">
+                    <div class="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-3xl p-3 flex gap-4 items-center shadow-sm hover:border-brandPurple/50 transition-all ${!open ? 'opacity-75' : ''}">
                         <img src="${imgUrl}" class="w-24 h-24 rounded-2xl object-cover shadow-sm flex-shrink-0">
                         <div class="flex-1 py-1">
                             <h3 class="font-extrabold text-brandBlue dark:text-white text-base">${item.name}</h3>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">${item.description || ''}</p>
                             <div class="flex justify-between items-center mt-3">
                                 <p class="text-brandOrange font-extrabold text-lg">${item.price} <span class="text-xs">ج.م</span></p>
-                                <button onclick="openItemOptionsDynamic('${itemData}')" class="bg-gray-100 dark:bg-white/10 text-brandBlue dark:text-white px-4 py-1.5 rounded-lg font-bold text-sm hover:bg-brandPurple hover:text-white transition-all">+ أضف</button>
+                                ${btnHtml}
                             </div>
                         </div>
                     </div>
@@ -339,6 +394,9 @@
         }
 
         function openItemOptionsDynamic(encodedItem) {
+            if (!isRestaurantOpen(currentActiveRestaurant)) {
+                return alert('هذا المطعم مغلق حالياً ولا يستقبل طلبات.');
+            }
             currentItem = JSON.parse(decodeURIComponent(encodedItem));
             document.getElementById('modal-item-name').innerText = currentItem.name;
             document.getElementById('modal-base-price').innerText = currentItem.price;
@@ -434,6 +492,9 @@
 
         function openCheckout() {
             if (cartItems.length === 0) return alert("السلة فاضية يا هندسة!");
+            if (!isRestaurantOpen(currentActiveRestaurant)) {
+                return alert("هذا المطعم مغلق حالياً ولا يستقبل طلبات.");
+            }
             updateCartUI();
             document.getElementById('checkout-overlay').classList.remove('hidden');
             document.getElementById('checkout-overlay').classList.add('flex');
@@ -451,6 +512,13 @@
             btn.disabled = true;
 
             try {
+                await syncRestaurantsStatus();
+                if (!isRestaurantOpen(currentActiveRestaurant)) {
+                    alert("عذراً، المطعم مغلق حالياً ولا يمكن إرسال الطلب.");
+                    closeCheckout();
+                    return;
+                }
+
                 const { data: { user } } = await supabaseApp.auth.getUser();
                 const studentName = user?.user_metadata?.full_name || 'طالب';
                 const studentPhone = user?.user_metadata?.phone || 'غير مسجل';
@@ -499,7 +567,6 @@
             clearInterval(cancelInterval);
             
             let totalOrderTime = minutes * 60;
-            // مهلة الإلغاء = 10% من وقت الاستلام المختار
             let cancelWindow = Math.floor(totalOrderTime * 0.10); 
             
             const mainTimerDisplay = document.getElementById('main-timer');
@@ -550,7 +617,7 @@
 
                 if (data.status === 'prep') {
                     title.innerText = 'المطعم بيجهز أكلك دلوقتي 🔥';
-                    cancelBtn.classList.add('hidden'); // لو بدأ التجهيز مفيش إلغاء
+                    cancelBtn.classList.add('hidden');
                 } else if (data.status === 'ready') {
                     title.innerText = 'أكلك جاهز للاستلام فوراً ✅';
                     cancelBtn.classList.add('hidden');

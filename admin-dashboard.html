@@ -39,6 +39,7 @@
     </header>
 
     <main class="max-w-6xl mx-auto px-4 py-6 space-y-8">
+        <div id="admin-message" class="hidden rounded-xl p-3 text-sm font-bold" role="alert"></div>
         
         <!-- كروت الإحصائيات العامة -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -76,14 +77,16 @@
                     <thead class="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold">
                         <tr>
                             <th class="p-4">المطعم</th>
+                            <th class="p-4">الحالة</th>
                             <th class="p-4">عدد الطلبات</th>
                             <th class="p-4">المكتملة</th>
                             <th class="p-4">إجمالي المبيعات</th>
                             <th class="p-4">العمولة المستحقة</th>
+                            <th class="p-4">إجراء</th>
                         </tr>
                     </thead>
                     <tbody id="restaurants-table" class="divide-y divide-gray-100 dark:divide-gray-700">
-                        <tr><td colspan="5" class="p-6 text-center text-gray-400">جاري تحميل البيانات...</td></tr>
+                        <tr><td colspan="7" class="p-6 text-center text-gray-400">جاري تحميل البيانات...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -125,6 +128,39 @@
 
         let allRestaurants = [];
         let allOrders = [];
+
+        function showAdminMessage(msg, type = 'success') {
+            const box = document.getElementById('admin-message');
+            if (!box) return;
+            box.textContent = msg;
+            box.className = 'rounded-xl p-3 text-sm font-bold ' + (
+                type === 'success'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200'
+            );
+            setTimeout(() => box.classList.add('hidden'), 4000);
+        }
+
+        async function toggleRestaurantOpen(restaurantId, currentlyOpen) {
+            const nextState = !currentlyOpen;
+            try {
+                const { error } = await supabaseClient
+                    .from('restaurants')
+                    .update({ is_open: nextState })
+                    .eq('id', restaurantId);
+
+                if (error) throw error;
+
+                allRestaurants = allRestaurants.map(r =>
+                    r.id === restaurantId ? { ...r, is_open: nextState } : r
+                );
+                renderStats();
+                showAdminMessage(nextState ? 'تم فتح المطعم بنجاح.' : 'تم قفل المطعم بنجاح.');
+            } catch (err) {
+                console.error(err);
+                showAdminMessage('تعذر تغيير حالة المطعم: ' + err.message, 'error');
+            }
+        }
 
         async function loadDashboardData() {
             try {
@@ -170,6 +206,7 @@
 
             const tbody = document.getElementById('restaurants-table');
             tbody.innerHTML = allRestaurants.map(rest => {
+                const isOpen = rest.is_open !== false;
                 const restOrders = allOrders.filter(o => o.restaurant_id === rest.id);
                 const restValid = restOrders.filter(o => o.status !== 'cancelled');
                 const restDone = restOrders.filter(o => o.status === 'done' || o.status === 'completed');
@@ -179,10 +216,23 @@
                 return `
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                         <td class="p-4 font-bold">${rest.name}</td>
+                        <td class="p-4">
+                            <span class="text-xs font-extrabold px-2.5 py-1 rounded-full ${isOpen ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}">
+                                ${isOpen ? 'مفتوح 🟢' : 'مغلق 🔴'}
+                            </span>
+                        </td>
                         <td class="p-4">${restOrders.length}</td>
                         <td class="p-4 text-green-500 font-bold">${restDone.length}</td>
                         <td class="p-4 font-bold text-brandOrange">${restRev} ج.م</td>
                         <td class="p-4 font-bold text-brandPurple">${restComm} ج.م</td>
+                        <td class="p-4">
+                            <button
+                                type="button"
+                                onclick="toggleRestaurantOpen('${rest.id}', ${isOpen})"
+                                class="text-xs font-extrabold px-3 py-1.5 rounded-lg text-white transition-colors ${isOpen ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}">
+                                ${isOpen ? 'قفل المطعم' : 'فتح المطعم'}
+                            </button>
+                        </td>
                     </tr>
                 `;
             }).join('');

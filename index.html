@@ -51,6 +51,7 @@
 
         <div class="flex bg-white dark:bg-gray-800/80 backdrop-blur-md rounded-xl p-1 mb-8 border border-gray-200 dark:border-gray-700 shadow-sm">
             <button
+                type="button"
                 onclick="toggleView('login')"
                 id="btnLoginTab"
                 class="flex-1 py-2.5 text-sm font-bold rounded-lg bg-gray-100 dark:bg-gray-700 text-brandOrange shadow-sm transition-all">
@@ -58,6 +59,7 @@
             </button>
 
             <button
+                type="button"
                 onclick="toggleView('register')"
                 id="btnRegisterTab"
                 class="flex-1 py-2.5 text-sm font-bold rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all">
@@ -112,6 +114,15 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
+                </button>
+            </div>
+
+            <div class="flex justify-end">
+                <button
+                    type="button"
+                    onclick="openForgotPasswordModal()"
+                    class="text-xs font-bold text-brandOrange hover:underline transition-colors">
+                    نسيت كلمة المرور؟
                 </button>
             </div>
 
@@ -232,11 +243,69 @@
         </form>
     </div>
 
-    <script>
-        // إعداد Supabase
-        const supabaseUrl = 'https://tbebxktkqluhwdtuzmny.supabase.co';
+    <!-- نافذة إرسال رابط استعادة كلمة المرور -->
+    <div id="forgotPasswordModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-xl border border-gray-200 dark:border-white/10">
+            <h3 class="text-lg font-extrabold text-brandBlue dark:text-white">استعادة كلمة المرور</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                أدخل بريدك الإلكتروني المسجل وسنرسل لك رابطاً لتعيين كلمة مرور جديدة.
+            </p>
+            <input
+                type="email"
+                id="forgotEmailInput"
+                placeholder="البريد الإلكتروني"
+                class="input-ltr w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-darkInput border border-gray-200 dark:border-white/10 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-brandOrange">
+            <div id="forgotMessage" class="hidden text-xs font-bold text-center p-2.5 rounded-lg"></div>
+            <div class="flex gap-2 pt-1">
+                <button
+                    type="button"
+                    id="sendResetBtn"
+                    onclick="sendPasswordResetEmail()"
+                    class="flex-1 bg-brandOrange text-white py-2.5 rounded-xl font-bold text-sm hover:bg-orange-600 transition-colors">
+                    إرسال الرابط
+                </button>
+                <button
+                    type="button"
+                    onclick="closeForgotPasswordModal()"
+                    class="flex-1 bg-gray-200 dark:bg-gray-800 py-2.5 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
 
-        // ضع هنا نفس Publishable Key الموجود في ملفك الحالي
+    <!-- نافذة تعيين كلمة مرور جديدة بعد فتح الرابط من البريد -->
+    <div id="resetPasswordModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-xl border border-brandPurple/40">
+            <h3 class="text-lg font-extrabold text-brandBlue dark:text-white">تعيين كلمة مرور جديدة</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                أدخل كلمة المرور الجديدة لحسابك (6 أحرف على الأقل).
+            </p>
+            <input
+                type="password"
+                id="newPasswordInput"
+                minlength="6"
+                placeholder="كلمة المرور الجديدة"
+                class="input-ltr w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-darkInput border border-gray-200 dark:border-white/10 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-brandPurple">
+            <input
+                type="password"
+                id="confirmPasswordInput"
+                minlength="6"
+                placeholder="تأكيد كلمة المرور الجديدة"
+                class="input-ltr w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-darkInput border border-gray-200 dark:border-white/10 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-brandPurple">
+            <div id="resetConfirmMessage" class="hidden text-xs font-bold text-center p-2.5 rounded-lg"></div>
+            <button
+                type="button"
+                id="confirmNewPasswordBtn"
+                onclick="submitNewPassword()"
+                class="w-full bg-gradient-to-r from-brandBlue to-brandPurple text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity">
+                حفظ كلمة المرور الجديدة
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://tbebxktkqluhwdtuzmny.supabase.co';
         const supabaseKey = 'sb_publishable_BB-2fI8-0OvAo1O1ISPVjw_2o1AuxAJ';
 
         const supabaseApp = window.supabase.createClient(
@@ -244,21 +313,24 @@
             supabaseKey
         );
 
-        // إظهار وإخفاء كلمة المرور
+        let isRecoveryMode = false;
+
+        function getRedirectUrl() {
+            const base = window.location.origin + window.location.pathname;
+            return base.startsWith('http') ? base : undefined;
+        }
+
         function togglePassword(inputId, iconId) {
             const passInput = document.getElementById(inputId);
             const eyeIcon = document.getElementById(iconId);
 
             if (passInput.type === 'password') {
                 passInput.type = 'text';
-
                 eyeIcon.innerHTML = `
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />`;
-
             } else {
                 passInput.type = 'password';
-
                 eyeIcon.innerHTML = `
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -267,14 +339,11 @@
             }
         }
 
-        // التبديل بين تسجيل الدخول وإنشاء الحساب
         function toggleView(view) {
             const loginForm = document.getElementById('loginForm');
             const registerForm = document.getElementById('registerForm');
-
             const btnLogin = document.getElementById('btnLoginTab');
             const btnRegister = document.getElementById('btnRegisterTab');
-
             const title = document.getElementById('formTitle');
             const subtitle = document.getElementById('formSubtitle');
 
@@ -284,32 +353,187 @@
             if (view === 'login') {
                 loginForm.classList.remove('hidden');
                 registerForm.classList.add('hidden');
-
                 title.innerText = 'مرحباً بك مجدداً';
                 subtitle.innerText = 'سجل الدخول للمتابعة إلى حسابك.';
-
-                btnLogin.className =
-                    "flex-1 py-2.5 text-sm font-bold rounded-lg bg-gray-100 dark:bg-gray-700 text-brandOrange shadow-sm transition-all";
-
-                btnRegister.className =
-                    "flex-1 py-2.5 text-sm font-bold rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all";
-
+                btnLogin.className = "flex-1 py-2.5 text-sm font-bold rounded-lg bg-gray-100 dark:bg-gray-700 text-brandOrange shadow-sm transition-all";
+                btnRegister.className = "flex-1 py-2.5 text-sm font-bold rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all";
             } else {
                 loginForm.classList.add('hidden');
                 registerForm.classList.remove('hidden');
-
                 title.innerText = 'حساب طالب جديد';
                 subtitle.innerText = 'أدخل بياناتك لإنشاء حسابك في ع الجاهز.';
-
-                btnRegister.className =
-                    "flex-1 py-2.5 text-sm font-bold rounded-lg bg-gray-100 dark:bg-gray-700 text-brandOrange shadow-sm transition-all";
-
-                btnLogin.className =
-                    "flex-1 py-2.5 text-sm font-bold rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all";
+                btnRegister.className = "flex-1 py-2.5 text-sm font-bold rounded-lg bg-gray-100 dark:bg-gray-700 text-brandOrange shadow-sm transition-all";
+                btnLogin.className = "flex-1 py-2.5 text-sm font-bold rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all";
             }
         }
 
-        // ================= تسجيل الدخول =================
+        function openForgotPasswordModal() {
+            const modal = document.getElementById('forgotPasswordModal');
+            const msgBox = document.getElementById('forgotMessage');
+            const loginEmailVal = document.getElementById('loginEmail').value.trim();
+
+            msgBox.classList.add('hidden');
+            if (loginEmailVal) {
+                document.getElementById('forgotEmailInput').value = loginEmailVal;
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeForgotPasswordModal() {
+            const modal = document.getElementById('forgotPasswordModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function sendPasswordResetEmail() {
+            const emailInput = document.getElementById('forgotEmailInput');
+            const msgBox = document.getElementById('forgotMessage');
+            const sendBtn = document.getElementById('sendResetBtn');
+            const email = emailInput.value.trim();
+
+            if (!email) {
+                msgBox.className = 'text-xs font-bold text-center p-2.5 rounded-lg text-red-500 bg-red-50 dark:bg-red-900/20';
+                msgBox.textContent = 'من فضلك أدخل البريد الإلكتروني أولاً.';
+                msgBox.classList.remove('hidden');
+                return;
+            }
+
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'جاري الإرسال... ⏳';
+            msgBox.classList.add('hidden');
+
+            try {
+                const redirectUrl = getRedirectUrl();
+                const options = redirectUrl ? { redirectTo: redirectUrl } : undefined;
+                const { error } = await supabaseApp.auth.resetPasswordForEmail(email, options);
+                if (error) throw error;
+
+                msgBox.className = 'text-xs font-bold text-center p-2.5 rounded-lg text-green-600 bg-green-50 dark:bg-green-900/20';
+                msgBox.textContent = 'تم إرسال رابط الاستعادة إلى بريدك الإلكتروني (تحقق من الوارد والرسائل غير المرغوب فيها).';
+                msgBox.classList.remove('hidden');
+            } catch (error) {
+                console.error('Reset email error:', error);
+                msgBox.className = 'text-xs font-bold text-center p-2.5 rounded-lg text-red-500 bg-red-50 dark:bg-red-900/20';
+                msgBox.textContent = error.message || 'تعذر إرسال رابط الاستعادة.';
+                msgBox.classList.remove('hidden');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'إرسال الرابط';
+            }
+        }
+
+        function openResetPasswordModal() {
+            isRecoveryMode = true;
+            const modal = document.getElementById('resetPasswordModal');
+            if (!modal) return;
+            if (modal.classList.contains('flex')) return;
+
+            const msgBox = document.getElementById('resetConfirmMessage');
+            if (msgBox) msgBox.classList.add('hidden');
+            document.getElementById('newPasswordInput').value = '';
+            document.getElementById('confirmPasswordInput').value = '';
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        async function submitNewPassword() {
+            const newPassword = document.getElementById('newPasswordInput').value;
+            const confirmPassword = document.getElementById('confirmPasswordInput').value;
+            const msgBox = document.getElementById('resetConfirmMessage');
+            const btn = document.getElementById('confirmNewPasswordBtn');
+
+            if (!newPassword || newPassword.length < 6) {
+                msgBox.className = 'text-xs font-bold text-center p-2.5 rounded-lg text-red-500 bg-red-50 dark:bg-red-900/20';
+                msgBox.textContent = 'كلمة المرور يجب ألا تقل عن 6 أحرف.';
+                msgBox.classList.remove('hidden');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                msgBox.className = 'text-xs font-bold text-center p-2.5 rounded-lg text-red-500 bg-red-50 dark:bg-red-900/20';
+                msgBox.textContent = 'كلمتا المرور غير متطابقتين.';
+                msgBox.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'جاري الحفظ... ⏳';
+            msgBox.classList.add('hidden');
+
+            try {
+                const { error } = await supabaseApp.auth.updateUser({ password: newPassword });
+                if (error) throw error;
+
+                msgBox.className = 'text-xs font-bold text-center p-2.5 rounded-lg text-green-600 bg-green-50 dark:bg-green-900/20';
+                msgBox.textContent = 'تم تحديث كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.';
+                msgBox.classList.remove('hidden');
+
+                isRecoveryMode = false;
+                await supabaseApp.auth.signOut();
+                if (window.history.replaceState) {
+                    window.history.replaceState(null, '', window.location.pathname);
+                }
+
+                setTimeout(() => {
+                    const modal = document.getElementById('resetPasswordModal');
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    toggleView('login');
+                }, 1500);
+            } catch (error) {
+                console.error('Update password error:', error);
+                msgBox.className = 'text-xs font-bold text-center p-2.5 rounded-lg text-red-500 bg-red-50 dark:bg-red-900/20';
+                msgBox.textContent = error.message || 'تعذر تحديث كلمة المرور.';
+                msgBox.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'حفظ كلمة المرور الجديدة';
+            }
+        }
+
+        async function detectAndHandleRecovery() {
+            const fullUrl = window.location.href || '';
+            const hash = window.location.hash || '';
+            const search = window.location.search || '';
+            const params = new URLSearchParams(search);
+
+            if (params.get('code') && typeof supabaseApp.auth.exchangeCodeForSession === 'function') {
+                try {
+                    await supabaseApp.auth.exchangeCodeForSession(params.get('code'));
+                } catch (_) {}
+            }
+
+            if (
+                fullUrl.includes('type=recovery') ||
+                hash.includes('recovery') ||
+                search.includes('recovery') ||
+                params.get('type') === 'recovery'
+            ) {
+                openResetPasswordModal();
+                return;
+            }
+
+            const { data } = await supabaseApp.auth.getSession();
+            if (data && data.session && (hash.includes('access_token') || params.get('code'))) {
+                openResetPasswordModal();
+            }
+        }
+
+        supabaseApp.auth.onAuthStateChange((event) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                openResetPasswordModal();
+            }
+        });
+
+        detectAndHandleRecovery();
+        window.addEventListener('DOMContentLoaded', () => {
+            detectAndHandleRecovery();
+            setTimeout(detectAndHandleRecovery, 350);
+            setTimeout(detectAndHandleRecovery, 900);
+        });
+
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -325,7 +549,6 @@
             submitBtn.textContent = 'جاري تسجيل الدخول... ⏳';
 
             try {
-                // تسجيل الدخول في Supabase Auth
                 const { data: authData, error: authError } =
                     await supabaseApp.auth.signInWithPassword({
                         email,
@@ -336,7 +559,6 @@
 
                 const userId = authData.user.id;
 
-                // جلب دور المستخدم ورقم المطعم من قاعدة البيانات
                 const { data: profile, error: profileError } = await supabaseApp
                     .from('users_profiles')
                     .select('id, role, restaurant_id')
@@ -345,24 +567,19 @@
 
                 if (profileError) throw profileError;
 
-                // توجيه حساب المطعم
                 if (profile.role === 'restaurant') {
-
                     if (!profile.restaurant_id) {
                         throw new Error('حساب المطعم غير مربوط بمطعم.');
                     }
-
                     window.location.replace('restaurant-dashboard.html');
                     return;
                 }
 
-                // توجيه المدير
                 if (profile.role === 'admin') {
                     window.location.replace('admin-dashboard.html');
                     return;
                 }
 
-                // توجيه الطالب
                 if (profile.role === 'student') {
                     window.location.replace('student-app.html');
                     return;
@@ -372,13 +589,9 @@
 
             } catch (error) {
                 console.error('Login error:', error);
-
-                // إنهاء الجلسة عند فشل التحقق من بيانات الحساب
                 await supabaseApp.auth.signOut();
-
                 errorMessage.textContent =
                     'تعذر تسجيل الدخول أو التحقق من الحساب. راجع بياناتك أو تواصل مع الإدارة.';
-
                 errorMessage.classList.remove('hidden');
 
             } finally {
@@ -387,7 +600,6 @@
             }
         });
 
-        // ================= إنشاء حساب طالب جديد =================
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -405,19 +617,25 @@
             submitBtn.textContent = 'جاري إنشاء الحساب... ⏳';
 
             try {
+                const redirectUrl = getRedirectUrl();
+                const signUpOptions = {
+                    data: {
+                        full_name: name,
+                        phone: phone
+                    }
+                };
+                if (redirectUrl) {
+                    signUpOptions.emailRedirectTo = redirectUrl;
+                }
+
                 const { data, error } = await supabaseApp.auth.signUp({
                     email,
                     password,
-                    options: {
-                        data: {
-                            full_name: name,
-                            phone: phone
-                        }
-                    }
+                    options: signUpOptions
                 });
 
                 if (error) throw error;
-                // ضمان تسجيل الطالب في جدول users_profiles
+
                 if (data.user) {
                     await supabaseApp.from('users_profiles').upsert([{
                         id: data.user.id,
@@ -430,16 +648,13 @@
                 if (data.session) {
                     registerMessage.className =
                         'text-green-600 text-sm font-bold text-center mt-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20';
-
                     registerMessage.textContent =
                         'تم إنشاء حسابك بنجاح! جاري تحويلك...';
-
                     window.location.replace('student-app.html');
 
                 } else {
                     registerMessage.className =
                         'text-green-600 text-sm font-bold text-center mt-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20';
-
                     registerMessage.textContent =
                         'تم إنشاء الحساب بنجاح. راجع بريدك الإلكتروني واضغط على رابط التأكيد، وبعدها يمكنك تسجيل الدخول.';
                 }
@@ -448,7 +663,6 @@
                 console.error('Registration error:', error);
 
                 let message = 'حصل خطأ أثناء إنشاء الحساب. حاول مرة أخرى.';
-
                 if (
                     error.message &&
                     error.message.toLowerCase().includes('already registered')
@@ -460,7 +674,6 @@
 
                 registerMessage.className =
                     'text-red-500 text-sm font-bold text-center mt-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20';
-
                 registerMessage.textContent = message;
                 registerMessage.classList.remove('hidden');
 
