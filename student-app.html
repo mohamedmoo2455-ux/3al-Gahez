@@ -119,19 +119,42 @@
 
     <!-- شاشة السلة والدفع -->
     <div id="checkout-overlay" class="fixed inset-0 bg-gray-900/60 dark:bg-black/80 backdrop-blur-sm z-[70] hidden flex-col justify-end">
-        <div class="bg-white dark:bg-gray-900 rounded-t-3xl p-6 max-h-[88vh] w-full max-w-md mx-auto relative border-t border-brandOrange/30 transition-colors flex flex-col overflow-y-auto">
+        <div class="bg-white dark:bg-gray-900 rounded-t-3xl p-6 max-h-[90vh] w-full max-w-md mx-auto relative border-t border-brandOrange/30 transition-colors flex flex-col overflow-y-auto">
             <button onclick="closeCheckout()" class="absolute top-4 left-4 bg-gray-100 dark:bg-white/10 p-2 rounded-full text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">✕</button>
             <h3 class="text-xl font-extrabold text-brandBlue dark:text-white mb-4 text-center">إتمام الطلب</h3>
             
             <!-- تفاصيل السلة -->
-            <div id="cart-items-list" class="space-y-2 mb-4 max-h-40 overflow-y-auto"></div>
+            <div id="cart-items-list" class="space-y-2 mb-4 max-h-36 overflow-y-auto"></div>
+
+            <!-- اختيار استلام أو توصيل (يظهر فقط للمطاعم التي لديها توصيل) -->
+            <div id="order-type-section" class="mb-4 hidden">
+                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">📦 طريقة الاستلام</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center justify-center gap-1.5 border border-brandOrange bg-orange-50 dark:bg-brandOrange/10 p-2.5 rounded-xl cursor-pointer transition-all">
+                        <input type="radio" name="order_type" value="pickup" checked onchange="handleOrderTypeChange()" class="accent-brandOrange w-4 h-4">
+                        <span class="text-xs font-bold text-gray-800 dark:text-white">استلام من المطعم 🏃</span>
+                    </label>
+                    <label class="flex items-center justify-center gap-1.5 border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-2.5 rounded-xl cursor-pointer hover:border-brandOrange transition-all">
+                        <input type="radio" name="order_type" value="delivery" onchange="handleOrderTypeChange()" class="accent-brandOrange w-4 h-4">
+                        <span class="text-xs font-bold text-gray-800 dark:text-white">توصيل 🛵</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- بيانات مكان التوصيل -->
+            <div id="delivery-details-section" class="mb-4 hidden space-y-2 bg-blue-50/70 dark:bg-blue-900/10 p-3.5 rounded-2xl border border-blue-200 dark:border-blue-800/40">
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">📍 بيانات المكان / العنوان بالتفصيل</label>
+                <textarea id="delivery-address-input" rows="2" placeholder="اكتب المنطقة والشارع ورقم العمارة والدور وأي علامة مميزة..." class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brandOrange resize-none"></textarea>
+                <p class="text-[11px] font-bold text-blue-700 dark:text-blue-300">ℹ️ سيتواصل معك المطعم هاتفياً لإبلاغك بسعر التوصيل.</p>
+            </div>
 
             <div class="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl mb-4 text-center border border-gray-200 dark:border-white/10">
                 <p class="text-xs font-bold text-gray-500 dark:text-gray-400">إجمالي الحساب</p>
                 <p class="text-3xl font-extrabold text-brandOrange mt-1 dark:neon-text"><span id="checkout-total">0</span> <span class="text-base">ج.م</span></p>
+                <p id="checkout-breakdown" class="hidden text-xs font-bold text-blue-600 dark:text-blue-300 mt-1">غير شامل سعر التوصيل (يُحدد عند تواصل المطعم)</p>
             </div>
             
-            <div class="mb-4">
+            <div id="pickup-time-section" class="mb-4">
                 <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">⏰ هتستلم إمتى؟</label>
                 <div class="grid grid-cols-3 gap-2">
                     <label class="flex items-center justify-center gap-1 border border-brandOrange bg-orange-50 dark:bg-brandOrange/10 p-2.5 rounded-lg cursor-pointer transition-all">
@@ -194,10 +217,10 @@
         const supabaseApp = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         let restaurants = [
-            { id: 1, name: 'أفندينا', emoji: '🥘', is_open: true },
-            { id: 2, name: 'كريب اند وافل', emoji: '🧇', is_open: true },
-            { id: 3, name: 'سبايسي كريب', emoji: '🌮', is_open: true },
-            { id: 4, name: 'الطباخ', emoji: '🍗', is_open: true }
+            { id: 1, name: 'أفندينا', emoji: '🥘', is_open: true, has_delivery: true },
+            { id: 2, name: 'كريب اند وافل', emoji: '🧇', is_open: true, has_delivery: true },
+            { id: 3, name: 'سبايسي كريب', emoji: '🌮', is_open: true, has_delivery: false },
+            { id: 4, name: 'الطباخ', emoji: '🍗', is_open: true, has_delivery: false }
         ];
 
         let currentActiveRestaurant = 1;
@@ -214,6 +237,12 @@
             return rest ? rest.is_open !== false : true;
         }
 
+        function restaurantHasDelivery(id) {
+            const rest = restaurants.find(r => String(r.id) === String(id));
+            if (!rest) return false;
+            return rest.has_delivery === true || [1, 2].includes(Number(rest.id));
+        }
+
         function updateClosedBanner() {
             const banner = document.getElementById('closed-restaurant-banner');
             if (!banner) return;
@@ -225,13 +254,18 @@
             try {
                 const { data, error } = await supabaseApp
                     .from('restaurants')
-                    .select('id, name, is_open');
+                    .select('id, name, is_open, has_delivery');
                 if (error || !Array.isArray(data) || !data.length) return;
 
                 const statusById = new Map(data.map(r => [String(r.id), r]));
                 restaurants = restaurants.map(r => {
                     const dbRest = statusById.get(String(r.id));
-                    return dbRest ? { ...r, name: dbRest.name || r.name, is_open: dbRest.is_open !== false } : r;
+                    return dbRest ? {
+                        ...r,
+                        name: dbRest.name || r.name,
+                        is_open: dbRest.is_open !== false,
+                        has_delivery: dbRest.has_delivery === true || [1, 2].includes(Number(dbRest.id))
+                    } : r;
                 });
 
                 data.forEach(dbRest => {
@@ -240,7 +274,8 @@
                             id: dbRest.id,
                             name: dbRest.name || `مطعم #${dbRest.id}`,
                             emoji: '🍽️',
-                            is_open: dbRest.is_open !== false
+                            is_open: dbRest.is_open !== false,
+                            has_delivery: dbRest.has_delivery === true
                         });
                     }
                 });
@@ -490,12 +525,33 @@
             `).join('');
         }
 
+        function getSelectedOrderType() {
+            const checked = document.querySelector('input[name="order_type"]:checked');
+            return checked ? checked.value : 'pickup';
+        }
+
+        function handleOrderTypeChange() {
+            const isDelivery = getSelectedOrderType() === 'delivery' && restaurantHasDelivery(currentActiveRestaurant);
+            document.getElementById('delivery-details-section').classList.toggle('hidden', !isDelivery);
+            document.getElementById('pickup-time-section').classList.toggle('hidden', isDelivery);
+            document.getElementById('checkout-breakdown').classList.toggle('hidden', !isDelivery);
+        }
+
         function openCheckout() {
             if (cartItems.length === 0) return alert("السلة فاضية يا هندسة!");
             if (!isRestaurantOpen(currentActiveRestaurant)) {
                 return alert("هذا المطعم مغلق حالياً ولا يستقبل طلبات.");
             }
+
+            const hasDelivery = restaurantHasDelivery(currentActiveRestaurant);
+            document.getElementById('order-type-section').classList.toggle('hidden', !hasDelivery);
+
+            const pickupRadio = document.querySelector('input[name="order_type"][value="pickup"]');
+            if (pickupRadio) pickupRadio.checked = true;
+
+            handleOrderTypeChange();
             updateCartUI();
+
             document.getElementById('checkout-overlay').classList.remove('hidden');
             document.getElementById('checkout-overlay').classList.add('flex');
         }
@@ -507,7 +563,17 @@
 
         async function submitOrderToDatabase() {
             const btn = document.getElementById('submit-order-btn');
-            const selectedMinutes = Number(document.querySelector('input[name="order_time"]:checked').value) || 30;
+            const orderType = restaurantHasDelivery(currentActiveRestaurant) ? getSelectedOrderType() : 'pickup';
+            const isDelivery = orderType === 'delivery';
+
+            let deliveryAddress = null;
+            if (isDelivery) {
+                deliveryAddress = document.getElementById('delivery-address-input').value.trim();
+                if (!deliveryAddress) return alert('من فضلك اكتب بيانات المكان والعنوان بالتفصيل.');
+            }
+
+            const selectedMinutes = isDelivery ? 45 : (Number(document.querySelector('input[name="order_time"]:checked').value) || 30);
+
             btn.innerText = 'جاري إرسال الطلب... ⏳';
             btn.disabled = true;
 
@@ -533,7 +599,9 @@
                         items: cartItems,
                         pickup_minutes: selectedMinutes,
                         customer_name: studentName,
-                        customer_phone: studentPhone
+                        customer_phone: studentPhone,
+                        order_type: orderType,
+                        delivery_address: deliveryAddress
                     }])
                     .select()
                     .single();
@@ -542,13 +610,14 @@
 
                 activeOrderId = data.id;
                 document.getElementById('track-order-id').innerText = `طلب #${activeOrderId}`;
-                document.getElementById('track-status-title').innerText = 'طلبك اتبعت للمطعم 👨‍🍳';
+                document.getElementById('track-status-title').innerText = isDelivery ? 'طلب التوصيل اتبعت للمطعم 🛵' : 'طلبك اتبعت للمطعم 👨‍🍳';
 
                 closeCheckout();
                 document.getElementById('tracking-overlay').classList.remove('hidden');
                 document.getElementById('tracking-overlay').classList.add('flex');
                 
                 cartItems = [];
+                document.getElementById('delivery-address-input').value = '';
                 updateCartUI();
                 startTimers(selectedMinutes);
                 startStatusPolling(activeOrderId);

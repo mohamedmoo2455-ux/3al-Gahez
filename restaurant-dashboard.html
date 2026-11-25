@@ -24,13 +24,22 @@
         body { font-family: 'Cairo', sans-serif; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-[#0B0F19] text-gray-900 dark:text-white transition-colors duration-300">
     <header class="bg-brandBlue text-white shadow-md sticky top-0 z-50">
         <div class="max-w-4xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
             <h1 class="text-xl md:text-2xl font-extrabold">لوحة تحكم: <span class="text-brandOrange" id="restName">جاري التحميل...</span></h1>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    id="alertToggleBtn"
+                    onclick="toggleAlerts()"
+                    class="text-xs md:text-sm px-3 py-1.5 rounded-lg font-extrabold transition-colors bg-amber-500 hover:bg-amber-600 text-white">
+                    🔕 تفعيل صوت التنبيه
+                </button>
                 <button
                     type="button"
                     id="toggleOpenBtn"
@@ -46,11 +55,13 @@
     <main class="max-w-4xl mx-auto px-4 py-6">
         <div id="page-message" class="hidden mb-5 rounded-lg p-3 text-sm font-bold" role="alert"></div>
 
-        <div class="flex bg-white dark:bg-gray-800 rounded-xl p-1 mb-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <button onclick="switchTab('orders')" id="btn-orders" class="flex-1 py-2 font-bold rounded-lg bg-brandOrange text-white transition-all">الطلبات الحالية</button>
-            <button onclick="switchTab('menu')" id="btn-menu" class="flex-1 py-2 font-bold rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all bg-transparent">إدارة المنيو</button>
+        <!-- التابات الرئيسية -->
+        <div class="flex bg-white dark:bg-gray-800 rounded-xl p-1 mb-6 shadow-sm border border-gray-200 dark:border-gray-700 gap-1">
+            <button onclick="switchTab('orders')" id="btn-orders" class="flex-1 py-2 font-bold rounded-lg bg-brandOrange text-white transition-all text-sm md:text-base">الطلبات الحالية</button>
+            <button onclick="switchTab('menu')" id="btn-menu" class="flex-1 py-2 font-bold rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all bg-transparent text-sm md:text-base">إدارة المنيو</button>
         </div>
 
+        <!-- تاب الطلبات -->
         <div id="orders-tab" class="tab-content active">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-r-4 border-statusNew">
@@ -75,11 +86,19 @@
             </div>
         </div>
 
+        <!-- تاب إدارة المنيو مع تقسيمة الأقسام -->
         <div id="menu-tab" class="tab-content">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
                 <h2 class="text-xl font-bold text-brandBlue dark:text-white">أصناف المنيو</h2>
                 <button onclick="openAddModal()" class="bg-brandOrange hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors">+ إضافة صنف جديد</button>
             </div>
+
+            <!-- بحث + شريط الأقسام -->
+            <div class="mb-4 space-y-3">
+                <input type="text" id="menu-search" oninput="renderMenuItems()" placeholder="🔍 ابحث عن صنف في المنيو..." class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brandOrange">
+                <div id="menu-categories-bar" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
+            </div>
+
             <div id="menu-container" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
                 <p class="text-gray-500 font-bold text-center py-10">جاري تحميل المنيو...</p>
             </div>
@@ -130,6 +149,15 @@
         let refreshTimer = null;
         let editingItemId = null;
 
+        let allMenuItems = [];
+        let selectedMenuCategory = 'الكل';
+
+        // متغيرات نظام التنبيه للطلبات الجديدة
+        let knownOrderIds = new Set();
+        let isFirstOrdersLoad = true;
+        let alertsEnabled = false;
+        let audioCtx = null;
+
         const $ = (id) => document.getElementById(id);
         const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -142,7 +170,84 @@
                 (type === 'success'
                     ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
                     : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200');
-            setTimeout(() => box.classList.add('hidden'), 4000);
+            setTimeout(() => box.classList.add('hidden'), 5000);
+        }
+
+        // ================= نظام صوت وإشعارات الطلبات الجديدة =================
+        function playNotificationSound() {
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) return;
+                if (!audioCtx) audioCtx = new AudioContextClass();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const notes = [880, 1174.66, 880]; // نغمة جرس واضحة
+                notes.forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.18);
+                    gain.gain.setValueAtTime(0.25, audioCtx.currentTime + i * 0.18);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.18 + 0.16);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime + i * 0.18);
+                    osc.stop(audioCtx.currentTime + i * 0.18 + 0.17);
+                });
+            } catch (e) {
+                console.warn('Audio play blocked:', e);
+            }
+        }
+
+        async function toggleAlerts() {
+            const btn = $('alertToggleBtn');
+            alertsEnabled = !alertsEnabled;
+
+            if (alertsEnabled) {
+                playNotificationSound();
+                if ('Notification' in window && Notification.permission === 'default') {
+                    try { await Notification.requestPermission(); } catch (_) {}
+                }
+                if (btn) {
+                    btn.textContent = '🔔 التنبيهات مفعّلة';
+                    btn.className = 'text-xs md:text-sm px-3 py-1.5 rounded-lg font-extrabold transition-colors bg-purple-600 hover:bg-purple-700 text-white';
+                }
+                showMessage('تم تفعيل صوت وإشعارات الطلبات الجديدة.', 'success');
+            } else {
+                if (btn) {
+                    btn.textContent = '🔕 تفعيل صوت التنبيه';
+                    btn.className = 'text-xs md:text-sm px-3 py-1.5 rounded-lg font-extrabold transition-colors bg-amber-500 hover:bg-amber-600 text-white';
+                }
+                showMessage('تم إيقاف صوت التنبيه مؤقتاً.');
+            }
+        }
+
+        function notifyNewOrders(newOrders) {
+            const count = newOrders.length;
+            const latest = newOrders[0];
+            const msg = count === 1
+                ? `🔔 وصل طلب جديد #${latest.id} (${latest.total_price || 0} ج.م)`
+                : `🔔 وصل ${count} طلبات جديدة!`;
+
+            showMessage(msg, 'success');
+
+            if (alertsEnabled) {
+                playNotificationSound();
+                if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+            }
+
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    new Notification('ع الجاهز - طلب جديد! 🍔', {
+                        body: msg,
+                        tag: 'new-order-' + latest.id
+                    });
+                } catch (_) {}
+            }
+
+            const originalTitle = document.title;
+            document.title = `🔴 (${count}) طلب جديد!`;
+            setTimeout(() => { document.title = originalTitle; }, 6000);
         }
 
         function renderOpenButton() {
@@ -185,14 +290,16 @@
         }
 
         function switchTab(tabName) {
-            $('orders-tab').classList.toggle('active', tabName === 'orders');
-            $('menu-tab').classList.toggle('active', tabName === 'menu');
-            $('btn-orders').className = tabName === 'orders'
-                ? 'flex-1 py-2 font-bold rounded-lg bg-brandOrange text-white transition-all'
-                : 'flex-1 py-2 font-bold rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all bg-transparent';
-            $('btn-menu').className = tabName === 'menu'
-                ? 'flex-1 py-2 font-bold rounded-lg bg-brandOrange text-white transition-all'
-                : 'flex-1 py-2 font-bold rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all bg-transparent';
+            ['orders', 'menu'].forEach(t => {
+                const tabEl = $(`${t}-tab`);
+                const btnEl = $(`btn-${t}`);
+                if (tabEl) tabEl.classList.toggle('active', t === tabName);
+                if (btnEl) {
+                    btnEl.className = t === tabName
+                        ? 'flex-1 py-2 font-bold rounded-lg bg-brandOrange text-white transition-all text-sm md:text-base'
+                        : 'flex-1 py-2 font-bold rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all bg-transparent text-sm md:text-base';
+                }
+            });
             if (tabName === 'menu') fetchMenu();
         }
 
@@ -229,10 +336,11 @@
 
                 $('restName').textContent = restaurant.name || 'المطعم';
                 renderOpenButton();
+
                 await Promise.all([fetchOrders(), fetchMenu()]);
 
                 if (refreshTimer) clearInterval(refreshTimer);
-                refreshTimer = setInterval(fetchOrders, 15000);
+                refreshTimer = setInterval(fetchOrders, 10000);
             } catch (error) {
                 console.error(error);
                 showMessage(error.message || 'تعذر تهيئة لوحة التحكم.');
@@ -252,6 +360,19 @@
 
                 if (error) throw error;
                 const rows = orders || [];
+
+                // اكتشاف الطلبات الجديدة وإطلاق التنبيه
+                if (isFirstOrdersLoad) {
+                    rows.forEach(o => knownOrderIds.add(o.id));
+                    isFirstOrdersLoad = false;
+                } else {
+                    const newlyArrived = rows.filter(o => o.status === 'new' && !knownOrderIds.has(o.id));
+                    rows.forEach(o => knownOrderIds.add(o.id));
+                    if (newlyArrived.length > 0) {
+                        notifyNewOrders(newlyArrived);
+                    }
+                }
+
                 $('stat-new').textContent = rows.filter(o => o.status === 'new').length;
                 $('stat-prep').textContent = rows.filter(o => o.status === 'prep').length;
                 $('stat-ready').textContent = rows.filter(o => o.status === 'ready').length;
@@ -286,17 +407,24 @@
             const total = order.total_price == null ? '—' : escapeHtml(order.total_price);
             const canChange = !['done', 'cancelled'].includes(order.status);
             const canCancel = order.status === 'new';
+            const isDelivery = order.order_type === 'delivery';
 
             return `
                 <article class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border ${status.border} relative overflow-hidden transition-all">
                     ${order.status === 'new' ? '<div class="absolute top-0 left-0 right-0 bg-red-100 text-red-600 text-[10px] font-bold text-center py-0.5">طلب جديد - يرجى البدء في التجهيز</div>' : ''}
                     <div class="flex justify-between items-start mb-2 ${order.status === 'new' ? 'mt-3' : ''}">
                         <div>
-                            <span class="${status.color} text-white text-xs px-2 py-1 rounded font-bold">${escapeHtml(status.label)}</span>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="${status.color} text-white text-xs px-2 py-1 rounded font-bold">${escapeHtml(status.label)}</span>
+                                ${isDelivery
+                                    ? '<span class="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs px-2 py-1 rounded font-bold">🛵 توصيل</span>'
+                                    : '<span class="bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 text-xs px-2 py-1 rounded font-bold">🏃 استلام</span>'}
+                            </div>
                             <h3 class="font-bold text-lg mt-2">طلب #${escapeHtml(order.id)}</h3>
                         </div>
                         <div class="text-left">
                             <p class="text-brandOrange font-extrabold text-lg">${total} ج.م</p>
+                            ${isDelivery ? '<p class="text-[11px] text-blue-600 dark:text-blue-300 font-bold">+ سعر التوصيل</p>' : ''}
                         </div>
                     </div>
 
@@ -308,6 +436,13 @@
                             </a>
                         ` : '<span class="text-gray-400 text-xs">بدون رقم</span>'}
                     </div>
+
+                    ${isDelivery ? `
+                        <div class="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded-xl mb-3 text-xs border border-blue-200 dark:border-blue-800/50 space-y-1">
+                            <p class="font-bold text-blue-800 dark:text-blue-300">📍 عنوان التوصيل:</p>
+                            <p class="text-gray-700 dark:text-gray-200 font-semibold">${escapeHtml(order.delivery_address || 'غير محدد')}</p>
+                        </div>
+                    ` : ''}
 
                     <div class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg text-sm mb-4 border border-gray-100 dark:border-gray-700">
                         <ul class="list-disc list-inside space-y-1">${itemsHtml}</ul>
@@ -366,6 +501,7 @@
             }
         }
 
+        // ================= إدارة المنيو مع الأقسام =================
         async function fetchMenu() {
             if (!currentRestaurant) return;
             const container = $('menu-container');
@@ -377,37 +513,82 @@
                     .order('id', { ascending: false });
 
                 if (error) throw error;
-                if (!items || !items.length) {
-                    container.innerHTML = '<p class="text-gray-500 font-bold text-center py-10">لا توجد أصناف في المنيو حالياً.</p>';
-                    return;
+                allMenuItems = items || [];
+
+                const uniqueCats = ['الكل', ...new Set(allMenuItems.map(i => i.category).filter(Boolean))];
+                if (!uniqueCats.includes(selectedMenuCategory)) {
+                    selectedMenuCategory = 'الكل';
                 }
 
-                container.innerHTML = items.map(item => {
-                    const available = item.is_available !== false;
-                    return `
-                        <div class="p-4 flex flex-wrap justify-between items-center gap-3">
-                            <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <h3 class="font-bold">${escapeHtml(item.name)}</h3>
-                                    ${item.category ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">${escapeHtml(item.category)}</span>` : ''}
-                                </div>
-                                ${item.description ? `<p class="text-xs text-gray-500 mt-1">${escapeHtml(item.description)}</p>` : ''}
-                                <p class="text-sm text-brandOrange font-bold mt-1">${escapeHtml(item.price)} ج.م</p>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button type="button" onclick="editPrice('${escapeHtml(item.id)}', '${escapeHtml(item.price)}')" class="text-xs bg-gray-100 dark:bg-gray-700 px-2.5 py-1.5 rounded font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">تعديل السعر</button>
-                                <label class="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-700 px-2.5 py-1.5 rounded cursor-pointer">
-                                    <input type="checkbox" ${available ? 'checked' : ''} onchange="toggleMenuAvailability(this, ${item.id})">
-                                    <span>${available ? 'متاح' : 'مغلق'}</span>
-                                </label>
-                                <button onclick="deleteItem(${item.id})" class="text-xs bg-red-100 text-red-600 px-2 py-1.5 rounded font-bold">🗑️</button>
-                            </div>
-                        </div>`;
-                }).join('');
+                renderMenuCategories(uniqueCats);
+                renderMenuItems();
             } catch (error) {
                 console.error(error);
                 container.innerHTML = '<p class="text-red-500 text-center py-10">حدث خطأ في تحميل المنيو: ' + escapeHtml(error.message) + '</p>';
             }
+        }
+
+        function renderMenuCategories(cats) {
+            const bar = $('menu-categories-bar');
+            if (!bar) return;
+            bar.innerHTML = cats.map(cat => {
+                const isActive = cat === selectedMenuCategory;
+                const cls = isActive
+                    ? 'bg-brandOrange text-white border-brandOrange'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brandOrange';
+                return `<button type="button" onclick="selectMenuCategory('${escapeHtml(cat)}')" class="whitespace-nowrap px-4 py-1.5 rounded-full text-xs md:text-sm font-bold border transition-colors ${cls}">${escapeHtml(cat)}</button>`;
+            }).join('');
+        }
+
+        function selectMenuCategory(cat) {
+            selectedMenuCategory = cat;
+            const uniqueCats = ['الكل', ...new Set(allMenuItems.map(i => i.category).filter(Boolean))];
+            renderMenuCategories(uniqueCats);
+            renderMenuItems();
+        }
+
+        function renderMenuItems() {
+            const container = $('menu-container');
+            const query = ($('menu-search')?.value || '').trim().toLowerCase();
+
+            let filtered = allMenuItems;
+            if (selectedMenuCategory !== 'الكل') {
+                filtered = filtered.filter(i => i.category === selectedMenuCategory);
+            }
+            if (query) {
+                filtered = filtered.filter(i =>
+                    (i.name && i.name.toLowerCase().includes(query)) ||
+                    (i.description && i.description.toLowerCase().includes(query))
+                );
+            }
+
+            if (!filtered.length) {
+                container.innerHTML = '<p class="text-gray-500 font-bold text-center py-10">لا توجد أصناف مطابقة في هذا القسم.</p>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(item => {
+                const available = item.is_available !== false;
+                return `
+                    <div class="p-4 flex flex-wrap justify-between items-center gap-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="font-bold">${escapeHtml(item.name)}</h3>
+                                ${item.category ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">${escapeHtml(item.category)}</span>` : ''}
+                            </div>
+                            ${item.description ? `<p class="text-xs text-gray-500 mt-1">${escapeHtml(item.description)}</p>` : ''}
+                            <p class="text-sm text-brandOrange font-bold mt-1">${escapeHtml(item.price)} ج.م</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="editPrice('${escapeHtml(item.id)}', '${escapeHtml(item.price)}')" class="text-xs bg-gray-100 dark:bg-gray-700 px-2.5 py-1.5 rounded font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">تعديل السعر</button>
+                            <label class="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-700 px-2.5 py-1.5 rounded cursor-pointer">
+                                <input type="checkbox" ${available ? 'checked' : ''} onchange="toggleMenuAvailability(this, ${item.id})">
+                                <span>${available ? 'متاح' : 'مغلق'}</span>
+                            </label>
+                            <button onclick="deleteItem(${item.id})" class="text-xs bg-red-100 text-red-600 px-2 py-1.5 rounded font-bold">🗑️</button>
+                        </div>
+                    </div>`;
+            }).join('');
         }
 
         async function toggleMenuAvailability(checkbox, itemId) {
@@ -522,10 +703,13 @@
             window.location.href = 'index.html';
         }
 
+        window.toggleAlerts = toggleAlerts;
         window.toggleRestaurantOpen = toggleRestaurantOpen;
         window.switchTab = switchTab;
         window.updateStatus = updateStatus;
         window.cancelOrder = cancelOrder;
+        window.selectMenuCategory = selectMenuCategory;
+        window.renderMenuItems = renderMenuItems;
         window.toggleMenuAvailability = toggleMenuAvailability;
         window.editPrice = editPrice;
         window.closeEditPriceModal = closeEditPriceModal;
